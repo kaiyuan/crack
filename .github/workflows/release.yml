@@ -5,6 +5,9 @@ on:
     tags:
       - "v*"
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 permissions:
   contents: write
 
@@ -19,7 +22,7 @@ jobs:
             bundle_args: --bundles none
             asset_path: src-tauri/target/x86_64-pc-windows-msvc/release/crack.exe
             asset_name: crack-windows-x64.zip
-          - os: macos-13
+          - os: macos-15-intel
             rust_target: x86_64-apple-darwin
             bundle_args: --bundles app
             asset_name: crack-macos-x64.zip
@@ -32,7 +35,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -40,9 +43,9 @@ jobs:
           targets: ${{ matrix.rust_target }}
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: "20"
+          node-version: "24"
 
       - name: Install Tauri CLI
         run: cargo install tauri-cli --version "^1.5" --locked

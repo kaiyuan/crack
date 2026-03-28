@@ -28,7 +28,7 @@
       }
     },
     "bundle": {
-      "active": false,
+      "active": true,
       "identifier": "com.kaiyuan.crack",
       "icon": [
         "icons/icon.ico",
