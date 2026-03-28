@@ -12,6 +12,7 @@ use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 use tauri::api::dialog::blocking::FileDialogBuilder;
 
+// 前端用于展示与导出的文件元信息。
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 struct ImageFile {
@@ -113,6 +114,7 @@ struct PreviewData {
     data_url: String,
 }
 
+// 统一限定当前版本可处理的图片格式，避免前后端规则不一致。
 fn is_supported_format(format: ImageFormat) -> bool {
     matches!(
         format,
@@ -125,6 +127,7 @@ fn is_supported_format(format: ImageFormat) -> bool {
     )
 }
 
+// 将 image crate 的格式枚举映射为项目内部统一扩展名。
 fn normalized_extension(format: ImageFormat) -> &'static str {
     match format {
         ImageFormat::Jpeg => "jpg",
@@ -136,6 +139,7 @@ fn normalized_extension(format: ImageFormat) -> &'static str {
     }
 }
 
+// 预览数据 URL 需要准确的 MIME，按真实格式返回。
 fn mime_for_format(format: ImageFormat) -> &'static str {
     match format {
         ImageFormat::Jpeg => "image/jpeg",
@@ -147,6 +151,7 @@ fn mime_for_format(format: ImageFormat) -> &'static str {
     }
 }
 
+// 一次探测格式与尺寸，减少重复打开文件造成的额外 I/O。
 fn probe_image(path: &Path) -> Result<(ImageFormat, (u32, u32)), String> {
     let reader = image::ImageReader::open(path).map_err(|error| error.to_string())?;
     let guessed = reader
@@ -164,6 +169,7 @@ fn probe_image(path: &Path) -> Result<(ImageFormat, (u32, u32)), String> {
     Ok((format, dimensions))
 }
 
+// 使用稳定的最后修改时间戳，保证同一文件反复导入时 id 可预测。
 fn stable_modified_token(metadata: &fs::Metadata) -> u128 {
     metadata
         .modified()
@@ -173,6 +179,7 @@ fn stable_modified_token(metadata: &fs::Metadata) -> u128 {
         .unwrap_or_default()
 }
 
+// 规范化单个文件：校验、探测、提取元信息并构建前端可用对象。
 fn normalize_file(path: &Path) -> Result<ImageFile, String> {
     let metadata = fs::metadata(path).map_err(|error| error.to_string())?;
     if !metadata.is_file() {
@@ -245,6 +252,7 @@ fn default_output_directory() -> String {
     String::from("source")
 }
 
+// 未指定输出目录时，默认回落到源图所在目录。
 fn source_directory(file: &ImageFile) -> PathBuf {
     Path::new(&file.path)
         .parent()
@@ -276,6 +284,7 @@ fn get_runtime_info() -> RuntimeInfo {
 
 #[tauri::command]
 fn get_preview_data(path: String) -> Result<PreviewData, String> {
+    // 直接基于已读取字节猜测格式，避免再额外读一次磁盘文件。
     let bytes = fs::read(&path).map_err(|error| error.to_string())?;
     let format = image::guess_format(&bytes).map_err(|error| error.to_string())?;
     if !is_supported_format(format) {
@@ -292,6 +301,7 @@ fn get_preview_data(path: String) -> Result<PreviewData, String> {
     })
 }
 
+// 裁剪参数统一做边界收敛，避免越界导致 panic。
 fn crop_image(image: DynamicImage, options: &CropOptions) -> DynamicImage {
     if !options.enabled {
         return image;
@@ -313,6 +323,7 @@ fn crop_image(image: DynamicImage, options: &CropOptions) -> DynamicImage {
     image.crop_imm(safe_x, safe_y, width, height)
 }
 
+// 缩放支持 fit/fill/stretch 三种策略，便于前端直接切换模式。
 fn resize_image(image: DynamicImage, options: &ResizeOptions) -> DynamicImage {
     if !options.enabled || (options.width.is_none() && options.height.is_none()) {
         return image;
@@ -330,6 +341,7 @@ fn resize_image(image: DynamicImage, options: &ResizeOptions) -> DynamicImage {
     }
 }
 
+// 根据九宫格位置与边距计算覆盖图层最终落点。
 fn overlay_position(
     base_width: u32,
     base_height: u32,
@@ -352,6 +364,7 @@ fn overlay_position(
     (left.max(0), top.max(0))
 }
 
+// 仅调整 alpha 通道，实现覆盖图层透明度控制。
 fn apply_alpha(image: &mut RgbaImage, opacity: f32) {
     for pixel in image.pixels_mut() {
         let alpha = (pixel[3] as f32 * opacity.clamp(0.0, 1.0)).round() as u8;
@@ -359,6 +372,7 @@ fn apply_alpha(image: &mut RgbaImage, opacity: f32) {
     }
 }
 
+// 图层覆盖：缩放、透明度处理、定位后叠加到基图。
 fn apply_overlay(base: &mut DynamicImage, overlay: &OverlayOptions) -> Result<(), String> {
     if !overlay.enabled {
         return Ok(());
@@ -402,6 +416,7 @@ fn apply_overlay(base: &mut DynamicImage, overlay: &OverlayOptions) -> Result<()
     Ok(())
 }
 
+// 前端传来的水印是透明 PNG，按画布大小缩放后整体叠加。
 fn apply_watermark(base: &mut DynamicImage, watermark_png_base64: &Option<String>) -> Result<(), String> {
     let Some(encoded) = watermark_png_base64 else {
         return Ok(());
@@ -419,6 +434,7 @@ fn apply_watermark(base: &mut DynamicImage, watermark_png_base64: &Option<String
     Ok(())
 }
 
+// 统一输出命名规则：模板变量、正则替换、非法字符清理。
 fn output_name(file: &ImageFile, index: usize, naming: &NamingOptions) -> Result<String, String> {
     let mut base_name = Path::new(&file.path)
         .file_stem()
@@ -470,6 +486,7 @@ fn output_name(file: &ImageFile, index: usize, naming: &NamingOptions) -> Result
     })
 }
 
+// 按目标格式编码输出；对 JPEG/PNG 使用显式编码参数控制体积与质量。
 fn save_image(image: &DynamicImage, format_name: &str, path: &Path) -> Result<(), String> {
     use image::codecs::jpeg::JpegEncoder;
     use image::codecs::png::{CompressionType, FilterType as PngFilterType, PngEncoder};
@@ -514,6 +531,7 @@ fn save_image(image: &DynamicImage, format_name: &str, path: &Path) -> Result<()
 
 #[tauri::command]
 fn process_images(payload: ProcessPayload) -> Result<ProcessSummary, String> {
+    // summary_directory 仅用于回传展示，不改变“每图默认存回源目录”的行为。
     let summary_directory = payload
         .output_directory
         .clone()
@@ -526,6 +544,7 @@ fn process_images(payload: ProcessPayload) -> Result<ProcessSummary, String> {
     let mut results = Vec::new();
     let mut errors = Vec::new();
 
+    // 批量处理时单张失败不阻断整个任务，所有错误统一回传给前端。
     for (index, file) in payload.files.iter().enumerate() {
         let result = (|| -> Result<ProcessResultItem, String> {
             let image = image::open(&file.path).map_err(|error| error.to_string())?;
