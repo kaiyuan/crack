@@ -22,12 +22,10 @@ jobs:
           - os: macos-13
             rust_target: x86_64-apple-darwin
             bundle_args: --bundles app
-            asset_path: src-tauri/target/x86_64-apple-darwin/release/bundle/macos/crack.app
             asset_name: crack-macos-x64.zip
           - os: macos-14
             rust_target: aarch64-apple-darwin
             bundle_args: --bundles app
-            asset_path: src-tauri/target/aarch64-apple-darwin/release/bundle/macos/crack.app
             asset_name: crack-macos-arm64.zip
 
     runs-on: ${{ matrix.os }}
@@ -59,10 +57,21 @@ jobs:
         run: |
           Compress-Archive -Path "${{ matrix.asset_path }}" -DestinationPath "${{ matrix.asset_name }}" -Force
 
+      - name: Locate macOS app bundle
+        if: runner.os == 'macOS'
+        run: |
+          APP_PATH="$(find src-tauri/target -type d -name 'crack.app' | head -n 1)"
+          if [ -z "$APP_PATH" ]; then
+            echo "No crack.app bundle was found under src-tauri/target"
+            find src-tauri/target -maxdepth 6 -type d | sort
+            exit 1
+          fi
+          echo "APP_PATH=$APP_PATH" >> "$GITHUB_ENV"
+
       - name: Pack macOS asset
         if: runner.os == 'macOS'
         run: |
-          ditto -c -k --sequesterRsrc --keepParent "${{ matrix.asset_path }}" "${{ matrix.asset_name }}"
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "${{ matrix.asset_name }}"
 
       - name: Upload assets to release
         uses: softprops/action-gh-release@v2
