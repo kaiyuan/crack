@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   --bg-top: #eef1f5;
   --bg-bottom: #dfe5ec;
   --chrome: rgba(255, 255, 255, 0.76);
@@ -523,3 +523,4 @@ input[type="color"] {
     flex-basis: auto;
   }
 }
+

@@ -824,8 +824,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "ezimgedit"
-version = "0.1.0"
+name = "ezcut"
+version = "0.0.6"
 dependencies = [
  "base64 0.22.1",
  "chrono",
