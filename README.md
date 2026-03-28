@@ -1,6 +1,7 @@
 # crack
 ![Crack Icon](https://github.com/Kaiyuan/crack/blob/main/src-tauri/icons/icon.png)
-`crack` is a lightweight desktop image editing tool for Windows 10+ and macOS.
+
+✂🖼️`crack` is a lightweight desktop image editing tool for Windows 10+ and macOS.
 
 Repository:
 
@@ -68,3 +69,8 @@ Pushing a tag like `v0.1.0` will trigger GitHub Actions to build and upload:
 - `src/app.js`
 - `src-tauri/src/main.rs`
 - `src-tauri/tauri.conf.json`
+- `docs/index.html`
+
+## GitHub Pages
+
+Enable GitHub Pages and set the publishing source to the `docs` folder on the `main` branch.
