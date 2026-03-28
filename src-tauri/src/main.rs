@@ -9,6 +9,7 @@ use regex::RegexBuilder;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::time::UNIX_EPOCH;
 use tauri::api::dialog::blocking::FileDialogBuilder;
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -17,7 +18,6 @@ struct ImageFile {
     id: String,
     path: String,
     name: String,
-    base_name: String,
     extension: String,
     width: u32,
     height: u32,
@@ -113,53 +113,90 @@ struct PreviewData {
     data_url: String,
 }
 
-fn supported_extension(path: &Path) -> bool {
-    let ext = path
-        .extension()
-        .and_then(|value| value.to_str())
-        .unwrap_or_default()
-        .to_ascii_lowercase();
-    matches!(ext.as_str(), "png" | "jpg" | "jpeg" | "webp" | "bmp" | "gif" | "tiff")
+fn is_supported_format(format: ImageFormat) -> bool {
+    matches!(
+        format,
+        ImageFormat::Png
+            | ImageFormat::Jpeg
+            | ImageFormat::WebP
+            | ImageFormat::Bmp
+            | ImageFormat::Gif
+            | ImageFormat::Tiff
+    )
 }
 
-fn normalize_file(path: &Path) -> Result<ImageFile, String> {
-    if !supported_extension(path) {
+fn normalized_extension(format: ImageFormat) -> &'static str {
+    match format {
+        ImageFormat::Jpeg => "jpg",
+        ImageFormat::WebP => "webp",
+        ImageFormat::Bmp => "bmp",
+        ImageFormat::Gif => "gif",
+        ImageFormat::Tiff => "tiff",
+        _ => "png",
+    }
+}
+
+fn mime_for_format(format: ImageFormat) -> &'static str {
+    match format {
+        ImageFormat::Jpeg => "image/jpeg",
+        ImageFormat::WebP => "image/webp",
+        ImageFormat::Bmp => "image/bmp",
+        ImageFormat::Gif => "image/gif",
+        ImageFormat::Tiff => "image/tiff",
+        _ => "image/png",
+    }
+}
+
+fn probe_image(path: &Path) -> Result<(ImageFormat, (u32, u32)), String> {
+    let reader = image::ImageReader::open(path).map_err(|error| error.to_string())?;
+    let guessed = reader
+        .with_guessed_format()
+        .map_err(|error| error.to_string())?;
+    let format = guessed
+        .format()
+        .ok_or_else(|| format!("Unsupported image format: {}", path.display()))?;
+
+    if !is_supported_format(format) {
         return Err(format!("Unsupported image format: {}", path.display()));
     }
 
-    let metadata = fs::metadata(path).map_err(|error| error.to_string())?;
-    let dimensions = image::image_dimensions(path).map_err(|error| error.to_string())?;
-    let extension = path
-        .extension()
-        .and_then(|value| value.to_str())
+    let dimensions = guessed.into_dimensions().map_err(|error| error.to_string())?;
+    Ok((format, dimensions))
+}
+
+fn stable_modified_token(metadata: &fs::Metadata) -> u128 {
+    metadata
+        .modified()
+        .ok()
+        .and_then(|time| time.duration_since(UNIX_EPOCH).ok())
+        .map(|duration| duration.as_millis())
         .unwrap_or_default()
-        .to_ascii_lowercase();
+}
+
+fn normalize_file(path: &Path) -> Result<ImageFile, String> {
+    let metadata = fs::metadata(path).map_err(|error| error.to_string())?;
+    if !metadata.is_file() {
+        return Err(format!("Not a file: {}", path.display()));
+    }
+
+    let (detected_format, dimensions) = probe_image(path)?;
+    let extension = normalized_extension(detected_format).to_string();
     let name = path
         .file_name()
         .and_then(|value| value.to_str())
         .unwrap_or_default()
         .to_string();
-    let base_name = path
-        .file_stem()
-        .and_then(|value| value.to_str())
-        .unwrap_or_default()
-        .to_string();
-    let modified_token = metadata
-        .modified()
-        .ok()
-        .and_then(|time| time.elapsed().ok())
-        .map(|elapsed| elapsed.as_millis())
-        .unwrap_or_default();
+    let modified_token = stable_modified_token(&metadata);
+    let file_size = metadata.len();
 
     Ok(ImageFile {
-        id: format!("{}:{}:{}", path.display(), metadata.len(), modified_token),
+        id: format!("{}:{}:{}", path.display(), file_size, modified_token),
         path: path.to_string_lossy().to_string(),
         name,
-        base_name,
         extension,
         width: dimensions.0,
         height: dimensions.1,
-        size_bytes: metadata.len(),
+        size_bytes: file_size,
     })
 }
 
@@ -183,8 +220,10 @@ fn load_files_from_paths(paths: Vec<String>) -> Result<Vec<ImageFile>, String> {
     let mut files = Vec::new();
     for path in paths {
         let path_buf = PathBuf::from(path);
-        if supported_extension(&path_buf) {
-            files.push(normalize_file(&path_buf)?);
+        if path_buf.is_file() {
+            if let Ok(file) = normalize_file(&path_buf) {
+                files.push(file);
+            }
         }
     }
     Ok(files)
@@ -238,19 +277,11 @@ fn get_runtime_info() -> RuntimeInfo {
 #[tauri::command]
 fn get_preview_data(path: String) -> Result<PreviewData, String> {
     let bytes = fs::read(&path).map_err(|error| error.to_string())?;
-    let extension = Path::new(&path)
-        .extension()
-        .and_then(|value| value.to_str())
-        .unwrap_or_default()
-        .to_ascii_lowercase();
-    let mime = match extension.as_str() {
-        "jpg" | "jpeg" => "image/jpeg",
-        "webp" => "image/webp",
-        "gif" => "image/gif",
-        "bmp" => "image/bmp",
-        "tiff" => "image/tiff",
-        _ => "image/png",
-    };
+    let format = image::guess_format(&bytes).map_err(|error| error.to_string())?;
+    if !is_supported_format(format) {
+        return Err(format!("Unsupported image format: {}", path));
+    }
+    let mime = mime_for_format(format);
 
     Ok(PreviewData {
         data_url: format!(
@@ -389,7 +420,11 @@ fn apply_watermark(base: &mut DynamicImage, watermark_png_base64: &Option<String
 }
 
 fn output_name(file: &ImageFile, index: usize, naming: &NamingOptions) -> Result<String, String> {
-    let mut base_name = file.base_name.clone();
+    let mut base_name = Path::new(&file.path)
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .unwrap_or_default()
+        .to_string();
     if naming.regex_enabled && !naming.regex_pattern.is_empty() {
         let regex = RegexBuilder::new(&naming.regex_pattern)
             .case_insensitive(naming.regex_flags.contains('i'))
