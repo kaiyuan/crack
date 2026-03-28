@@ -1,5 +1,5 @@
 # crack
-
+![Crack Icon](https://github.com/Kaiyuan/crack/blob/main/src-tauri/icons/icon.png)
 `crack` is a lightweight desktop image editing tool for Windows 10+ and macOS.
 
 Repository:
