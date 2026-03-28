@@ -1,0 +1,55 @@
+{
+  "$schema": "https://schema.tauri.app/config/1",
+  "build": {
+    "beforeBuildCommand": "",
+    "beforeDevCommand": "",
+    "devPath": "../src/index.html",
+    "distDir": "../src",
+    "withGlobalTauri": true
+  },
+  "package": {
+    "productName": "crack",
+    "version": "0.1.0"
+  },
+  "tauri": {
+    "allowlist": {
+      "all": false,
+      "dialog": {
+        "all": true
+      },
+      "path": {
+        "all": true
+      },
+      "fs": {
+        "all": true
+      },
+      "shell": {
+        "open": true
+      }
+    },
+    "bundle": {
+      "active": false,
+      "identifier": "com.kaiyuan.crack",
+      "icon": [
+        "icons/icon.ico",
+        "icons/icon.png"
+      ],
+      "windows": {
+        "digestAlgorithm": "sha256"
+      },
+      "macOS": {
+        "minimumSystemVersion": "10.15"
+      }
+    },
+    "windows": [
+      {
+        "title": "crack",
+        "width": 640,
+        "height": 800,
+        "minWidth": 640,
+        "minHeight": 430,
+        "resizable": true
+      }
+    ]
+  }
+}

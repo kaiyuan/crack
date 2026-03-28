@@ -1,0 +1,11 @@
+.DS_Store
+Thumbs.db
+
+/target
+/src-tauri/target
+/src-tauri/gen
+
+/.idea
+/.vscode
+
+*.log
