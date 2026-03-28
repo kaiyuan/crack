@@ -1,11 +1,11 @@
-# crack
-![Crack Icon](https://github.com/Kaiyuan/crack/blob/main/src-tauri/icons/icon.png)
+﻿# EZCut
+![EZCut Icon](https://github.com/Kaiyuan/ezcut/blob/main/src-tauri/icons/icon.png)
 
-✂🖼️`crack` is a lightweight desktop image editing tool for Windows 10+ and macOS.
+鉁傪煐硷笍`EZCut` is a lightweight desktop image editing tool for Windows 10+ and macOS.
 
 Repository:
 
-- [github.com/kaiyuan/crack](https://github.com/kaiyuan/crack)
+- [github.com/Kaiyuan/ezcut](https://github.com/Kaiyuan/ezcut)
 
 ## Overview
 
@@ -58,9 +58,9 @@ cargo tauri build
 
 Pushing a tag like `v0.1.0` will trigger GitHub Actions to build and upload:
 
-- `crack-v0.1.0-windows-x64.zip`
-- `crack-v0.1.0-macos-x64.zip`
-- `crack-v0.1.0-macos-arm64.zip`
+- `EZCut-v0.1.0-windows-x64.zip`
+- `EZCut-v0.1.0-macos-x64.zip`
+- `EZCut-v0.1.0-macos-arm64.zip`
 
 ## Main Files
 
@@ -74,3 +74,4 @@ Pushing a tag like `v0.1.0` will trigger GitHub Actions to build and upload:
 ## GitHub Pages
 
 Enable GitHub Pages and set the publishing source to the `docs` folder on the `main` branch.
+

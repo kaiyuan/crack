@@ -1,5 +1,5 @@
-[package]
-name = "crack"
+﻿[package]
+name = "ezcut"
 version = "0.1.0"
 description = "Lightweight batch image editor built with Tauri"
 authors = ["OpenAI Codex"]
@@ -22,3 +22,4 @@ tauri = { version = "1.5", features = ["dialog-all", "fs-all", "path-all", "shel
 [features]
 default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]
+

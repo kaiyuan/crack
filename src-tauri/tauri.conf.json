@@ -1,4 +1,4 @@
-{
+﻿{
   "$schema": "https://schema.tauri.app/config/1",
   "build": {
     "beforeBuildCommand": "",
@@ -8,7 +8,7 @@
     "withGlobalTauri": true
   },
   "package": {
-    "productName": "crack",
+    "productName": "EZCut",
     "version": "0.1.0"
   },
   "tauri": {
@@ -29,7 +29,7 @@
     },
     "bundle": {
       "active": true,
-      "identifier": "com.kaiyuan.crack",
+      "identifier": "com.kaiyuan.ezcut",
       "icon": [
         "icons/icon.ico",
         "icons/icon.png"
@@ -43,7 +43,7 @@
     },
     "windows": [
       {
-        "title": "crack",
+        "title": "EZCut",
         "width": 640,
         "height": 800,
         "minWidth": 640,
@@ -53,3 +53,4 @@
     ]
   }
 }
+

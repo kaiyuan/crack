@@ -7,7 +7,7 @@
       heroEyebrow: "Batch Image Editor",
       heroTitle: "Fast, lightweight image editing for desktop.",
       heroBody:
-        "crack helps you resize, crop, watermark, rename, and export multiple images with a clean desktop workflow on Windows and macOS.",
+        "EZCut helps you resize, crop, watermark, rename, and export multiple images with a clean desktop workflow on Windows and macOS.",
       downloadCurrent: "Download for your device",
       viewGithub: "View on GitHub",
       metaWindows: "Windows 10+",
@@ -48,7 +48,7 @@
       heroEyebrow: "批量图片编辑器",
       heroTitle: "轻量、快速的桌面图片处理工具。",
       heroBody:
-        "crack 适合在 Windows 和 macOS 上进行批量图片尺寸调整、裁剪、水印、重命名和导出，界面直接围绕实际工作流设计。",
+        "EZCut 适合在 Windows 和 macOS 上进行批量图片尺寸调整、裁剪、水印、重命名和导出，界面直接围绕实际工作流设计。",
       downloadCurrent: "下载当前设备版本",
       viewGithub: "查看 GitHub 仓库",
       metaWindows: "Windows 10+",
@@ -83,10 +83,16 @@
     }
   };
 
+  const fallbackReleasePage = "https://github.com/Kaiyuan/ezcut/releases/latest";
   const platformLinks = {
-    windows: "https://github.com/Kaiyuan/crack/releases/latest/download/crack-windows-x64.zip",
-    "mac-x64": "https://github.com/Kaiyuan/crack/releases/latest/download/crack-macos-x64.zip",
-    "mac-arm64": "https://github.com/Kaiyuan/crack/releases/latest/download/crack-macos-arm64.zip"
+    windows: fallbackReleasePage,
+    "mac-x64": fallbackReleasePage,
+    "mac-arm64": fallbackReleasePage
+  };
+  const assetMatchers = {
+    windows: /windows-x64\.zip$/i,
+    "mac-x64": /macos-x64\.zip$/i,
+    "mac-arm64": /macos-arm64\.zip$/i
   };
 
   const languagePicker = document.getElementById("language-picker");
@@ -127,8 +133,27 @@
   function applyPlatform(platform) {
     downloadCards.forEach((card) => {
       card.classList.toggle("is-detected", card.dataset.platform === platform);
+      card.href = platformLinks[card.dataset.platform] || fallbackReleasePage;
     });
-    primaryDownload.href = platformLinks[platform] || "https://github.com/Kaiyuan/crack/releases/latest";
+    primaryDownload.href = platformLinks[platform] || fallbackReleasePage;
+  }
+
+  async function hydrateLatestReleaseLinks() {
+    try {
+      const response = await fetch("https://api.github.com/repos/Kaiyuan/ezcut/releases/latest");
+      if (!response.ok) return;
+      const release = await response.json();
+      const assets = Array.isArray(release.assets) ? release.assets : [];
+      Object.keys(assetMatchers).forEach((platform) => {
+        const asset = assets.find((item) => assetMatchers[platform].test(item.name));
+        if (asset && asset.browser_download_url) {
+          platformLinks[platform] = asset.browser_download_url;
+        }
+      });
+      applyPlatform(detectPlatform());
+    } catch (_error) {
+      // Keep fallback links pointing at the latest release page.
+    }
   }
 
   const locale = detectLocale();
@@ -136,6 +161,7 @@
   languagePicker.value = locale;
   translate(locale);
   applyPlatform(platform);
+  void hydrateLatestReleaseLinks();
 
   languagePicker.addEventListener("change", (event) => {
     translate(event.target.value);

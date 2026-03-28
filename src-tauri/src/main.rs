@@ -1,4 +1,4 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+﻿#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 use base64::Engine;
@@ -549,5 +549,6 @@ fn main() {
             process_images
         ])
         .run(tauri::generate_context!())
-        .expect("error while running crack");
+        .expect("error while running EZCut");
 }
+

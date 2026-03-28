@@ -1,4 +1,4 @@
-name: Release
+﻿name: Release
 
 on:
   push:
@@ -20,7 +20,7 @@ jobs:
           - os: windows-latest
             rust_target: x86_64-pc-windows-msvc
             bundle_args: --bundles none
-            asset_path: src-tauri/target/x86_64-pc-windows-msvc/release/crack.exe
+            asset_path: src-tauri/target/x86_64-pc-windows-msvc/release/ezcut.exe
             asset_suffix: windows-x64
           - os: macos-15-intel
             rust_target: x86_64-apple-darwin
@@ -57,7 +57,7 @@ jobs:
       - name: Set asset name
         shell: bash
         run: |
-          echo "ASSET_NAME=crack-${{ github.ref_name }}-${{ matrix.asset_suffix }}.zip" >> "$GITHUB_ENV"
+          echo "ASSET_NAME=EZCut-${{ github.ref_name }}-${{ matrix.asset_suffix }}.zip" >> "$GITHUB_ENV"
 
       - name: Pack Windows asset
         if: runner.os == 'Windows'
@@ -68,9 +68,9 @@ jobs:
       - name: Locate macOS app bundle
         if: runner.os == 'macOS'
         run: |
-          APP_PATH="$(find src-tauri/target -type d -name 'crack.app' | head -n 1)"
+          APP_PATH="$(find src-tauri/target -type d -name 'EZCut.app' | head -n 1)"
           if [ -z "$APP_PATH" ]; then
-            echo "No crack.app bundle was found under src-tauri/target"
+            echo "No EZCut.app bundle was found under src-tauri/target"
             find src-tauri/target -maxdepth 6 -type d | sort
             exit 1
           fi
@@ -86,3 +86,4 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           files: ${{ env.ASSET_NAME }}
+
