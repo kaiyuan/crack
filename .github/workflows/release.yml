@@ -21,15 +21,15 @@ jobs:
             rust_target: x86_64-pc-windows-msvc
             bundle_args: --bundles none
             asset_path: src-tauri/target/x86_64-pc-windows-msvc/release/crack.exe
-            asset_name: crack-windows-x64.zip
+            asset_suffix: windows-x64
           - os: macos-15-intel
             rust_target: x86_64-apple-darwin
             bundle_args: --bundles app
-            asset_name: crack-macos-x64.zip
+            asset_suffix: macos-x64
           - os: macos-14
             rust_target: aarch64-apple-darwin
             bundle_args: --bundles app
-            asset_name: crack-macos-arm64.zip
+            asset_suffix: macos-arm64
 
     runs-on: ${{ matrix.os }}
 
@@ -54,11 +54,16 @@ jobs:
         run: cargo tauri build --target ${{ matrix.rust_target }} ${{ matrix.bundle_args }}
         working-directory: src-tauri
 
+      - name: Set asset name
+        shell: bash
+        run: |
+          echo "ASSET_NAME=crack-${{ github.ref_name }}-${{ matrix.asset_suffix }}.zip" >> "$GITHUB_ENV"
+
       - name: Pack Windows asset
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          Compress-Archive -Path "${{ matrix.asset_path }}" -DestinationPath "${{ matrix.asset_name }}" -Force
+          Compress-Archive -Path "${{ matrix.asset_path }}" -DestinationPath "$env:ASSET_NAME" -Force
 
       - name: Locate macOS app bundle
         if: runner.os == 'macOS'
@@ -74,10 +79,10 @@ jobs:
       - name: Pack macOS asset
         if: runner.os == 'macOS'
         run: |
-          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "${{ matrix.asset_name }}"
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$ASSET_NAME"
 
       - name: Upload assets to release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          files: ${{ matrix.asset_name }}
+          files: ${{ env.ASSET_NAME }}

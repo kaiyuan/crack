@@ -57,8 +57,9 @@ cargo tauri build
 
 Pushing a tag like `v0.1.0` will trigger GitHub Actions to build and upload:
 
-- Windows x64 portable package
-- macOS x64 package
+- `crack-v0.1.0-windows-x64.zip`
+- `crack-v0.1.0-macos-x64.zip`
+- `crack-v0.1.0-macos-arm64.zip`
 
 ## Main Files
 
