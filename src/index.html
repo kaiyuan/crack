@@ -1,327 +1,334 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>EZCut</title>
-    <link rel="stylesheet" href="./styles.css" />
-  </head>
-  <body>
-    <div class="window-shell">
-      <header class="titlebar">
-        <div class="titlebar-left">
-          <div class="traffic-lights" aria-hidden="true">
-            <span class="light close"></span>
-            <span class="light minimize"></span>
-            <span class="light zoom"></span>
-          </div>
-          <div class="title-wrap">
-            <strong class="title" data-i18n="appTitle">EZCut</strong>
-            <span class="subtitle" data-i18n="appSubtitle">Batch image editor</span>
-          </div>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EZCut</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+
+<body>
+  <div class="window-shell">
+    <header class="titlebar">
+      <div class="titlebar-left">
+        <div class="traffic-lights" aria-hidden="true">
+          <span class="light close"></span>
+          <span class="light minimize"></span>
+          <span class="light zoom"></span>
         </div>
-
-        <div class="titlebar-right">
-          <select id="language-picker" class="language-picker" aria-label="Language">
-            <option value="en">English</option>
-            <option value="zh-CN">简体中文</option>
-            <option value="zh-TW">繁體中文</option>
-            <option value="ja">日本語</option>
-            <option value="ko">한국어</option>
-          </select>
-          <input id="file-input" type="file" accept=".png,.jpg,.jpeg,.webp,.tiff,.bmp,.gif" multiple hidden />
-        </div>
-      </header>
-
-      <main class="split-view">
-        <section id="left-column" class="column left-column">
-          <div class="card preview-card">
-            <div class="card-header preview-header">
-              <div>
-                <p class="eyebrow" data-i18n="previewEyebrow">Preview</p>
-                <h2 data-i18n="previewTitle">Image Preview</h2>
-              </div>
-              <button id="pick-files-button" class="icon-button" type="button" aria-label="Add Images" title="Add Images">
-                <span aria-hidden="true">+</span>
-              </button>
-            </div>
-
-            <div id="preview-surface" class="preview-surface">
-              <canvas id="preview-canvas"></canvas>
-            </div>
-            <div id="preview-meta" class="meta-strip" data-i18n="noImageSelected">No image selected</div>
-          </div>
-
-          <div class="card list-card">
-            <div class="card-header">
-              <div>
-                <p class="eyebrow" data-i18n="libraryEyebrow">Library</p>
-                <h2 data-i18n="imagesTitle">Images</h2>
-              </div>
-              <span id="image-count" class="pill">0</span>
-            </div>
-            <div id="image-list" class="image-list empty-state">
-              <p data-i18n="noImagesYet">No images yet.</p>
-            </div>
-          </div>
-        </section>
-
-        <section id="right-column" class="column right-column">
-          <div class="card settings-card">
-            <div class="card-header settings-header">
-              <div>
-                <p class="eyebrow" data-i18n="settingsEyebrow">Settings</p>
-                <h2 data-i18n="outputSettings">Output Settings</h2>
-              </div>
-            </div>
-
-            <div class="settings-stack">
-              <details class="group" open>
-                <summary class="group-summary">
-                  <span data-i18n="resize">Resize</span>
-                </summary>
-                <div class="group-body">
-                  <label class="switch">
-                    <input id="resize-enabled" type="checkbox" checked />
-                    <span data-i18n="enableThis">Enable this section</span>
-                  </label>
-                  <div class="grid two">
-                    <label>
-                      <span data-i18n="width">Width</span>
-                      <input id="resize-width" type="number" min="1" placeholder="Leave empty" />
-                    </label>
-                    <label>
-                      <span data-i18n="height">Height</span>
-                      <input id="resize-height" type="number" min="1" placeholder="Leave empty" />
-                    </label>
-                  </div>
-                  <label>
-                    <span data-i18n="mode">Mode</span>
-                    <select id="resize-mode">
-                      <option value="fit" data-i18n="fit">Fit</option>
-                      <option value="fill" data-i18n="fill">Fill</option>
-                      <option value="stretch" data-i18n="stretch">Stretch</option>
-                    </select>
-                  </label>
-                </div>
-              </details>
-
-              <details class="group">
-                <summary class="group-summary">
-                  <span data-i18n="crop">Crop</span>
-                </summary>
-                <div class="group-body">
-                  <label class="switch">
-                    <input id="crop-enabled" type="checkbox" />
-                    <span data-i18n="enableThis">Enable this section</span>
-                  </label>
-                  <div class="grid two">
-                    <label>
-                      <span>X</span>
-                      <input id="crop-x" type="number" min="0" value="0" />
-                    </label>
-                    <label>
-                      <span>Y</span>
-                      <input id="crop-y" type="number" min="0" value="0" />
-                    </label>
-                  </div>
-                  <div class="grid two">
-                    <label>
-                      <span data-i18n="width">Width</span>
-                      <input id="crop-width" type="number" min="1" placeholder="Original width" />
-                    </label>
-                    <label>
-                      <span data-i18n="height">Height</span>
-                      <input id="crop-height" type="number" min="1" placeholder="Original height" />
-                    </label>
-                  </div>
-                </div>
-              </details>
-
-              <details class="group">
-                <summary class="group-summary">
-                  <span data-i18n="textWatermark">Text Watermark</span>
-                </summary>
-                <div class="group-body">
-                  <label class="switch">
-                    <input id="watermark-enabled" type="checkbox" />
-                    <span data-i18n="enableThis">Enable this section</span>
-                  </label>
-                  <label>
-                    <span data-i18n="text">Text</span>
-                    <input id="watermark-text" type="text" placeholder="Watermark text" />
-                  </label>
-                  <div class="grid two">
-                    <label>
-                      <span data-i18n="size">Size</span>
-                      <input id="watermark-font-size" type="number" min="8" value="30" />
-                    </label>
-                    <label>
-                      <span data-i18n="opacity">Opacity</span>
-                      <input id="watermark-opacity" type="number" min="0.05" max="1" step="0.05" value="0.35" />
-                    </label>
-                  </div>
-                  <div class="grid two">
-                    <label>
-                      <span data-i18n="margin">Margin</span>
-                      <input id="watermark-margin" type="number" min="0" value="20" />
-                    </label>
-                    <label>
-                      <span data-i18n="color">Color</span>
-                      <input id="watermark-color" type="color" value="#ffffff" />
-                    </label>
-                  </div>
-                  <label>
-                    <span data-i18n="position">Position</span>
-                    <select id="watermark-position">
-                      <option value="top-left" data-i18n="topLeft">Top Left</option>
-                      <option value="top-center" data-i18n="topCenter">Top Center</option>
-                      <option value="top-right" data-i18n="topRight">Top Right</option>
-                      <option value="center-left" data-i18n="centerLeft">Center Left</option>
-                      <option value="center-center" data-i18n="center">Center</option>
-                      <option value="center-right" data-i18n="centerRight">Center Right</option>
-                      <option value="bottom-left" data-i18n="bottomLeft">Bottom Left</option>
-                      <option value="bottom-center" data-i18n="bottomCenter">Bottom Center</option>
-                      <option value="bottom-right" selected data-i18n="bottomRight">Bottom Right</option>
-                    </select>
-                  </label>
-                </div>
-              </details>
-
-              <details class="group">
-                <summary class="group-summary">
-                  <span data-i18n="overlayImage">Overlay Image</span>
-                </summary>
-                <div class="group-body">
-                  <div class="inline-row">
-                    <label class="switch">
-                      <input id="overlay-enabled" type="checkbox" />
-                      <span data-i18n="enableThis">Enable this section</span>
-                    </label>
-                    <button id="pick-overlay-button" class="secondary-button" type="button" data-i18n="choose">Choose</button>
-                  </div>
-                  <div id="overlay-summary" class="info-box" data-i18n="noOverlaySelected">No overlay selected</div>
-                  <div class="grid two">
-                    <label>
-                      <span data-i18n="scalePercent">Scale %</span>
-                      <input id="overlay-scale" type="number" min="1" max="300" value="25" />
-                    </label>
-                    <label>
-                      <span data-i18n="opacity">Opacity</span>
-                      <input id="overlay-opacity" type="number" min="0.05" max="1" step="0.05" value="0.75" />
-                    </label>
-                  </div>
-                  <label>
-                    <span data-i18n="margin">Margin</span>
-                    <input id="overlay-margin" type="number" min="0" value="20" />
-                  </label>
-                  <label>
-                    <span data-i18n="position">Position</span>
-                    <select id="overlay-position">
-                      <option value="top-left" data-i18n="topLeft">Top Left</option>
-                      <option value="top-center" data-i18n="topCenter">Top Center</option>
-                      <option value="top-right" data-i18n="topRight">Top Right</option>
-                      <option value="center-left" data-i18n="centerLeft">Center Left</option>
-                      <option value="center-center" selected data-i18n="center">Center</option>
-                      <option value="center-right" data-i18n="centerRight">Center Right</option>
-                      <option value="bottom-left" data-i18n="bottomLeft">Bottom Left</option>
-                      <option value="bottom-center" data-i18n="bottomCenter">Bottom Center</option>
-                      <option value="bottom-right" data-i18n="bottomRight">Bottom Right</option>
-                    </select>
-                  </label>
-                </div>
-              </details>
-
-              <details class="group">
-                <summary class="group-summary">
-                  <span data-i18n="filename">Filename</span>
-                </summary>
-                <div class="group-body">
-                  <label>
-                    <span data-i18n="template">Template</span>
-                    <input id="output-template" type="text" value="{name}_edit" />
-                  </label>
-                  <label>
-                    <span data-i18n="exportCategory">Export Category</span>
-                    <select id="output-format">
-                      <option value="original" selected data-i18n="keepOriginal">Keep original</option>
-                      <option value="png">PNG</option>
-                      <option value="jpg">JPG</option>
-                      <option value="webp">WEBP</option>
-                    </select>
-                  </label>
-                  <label class="switch">
-                    <input id="regex-enabled" type="checkbox" />
-                    <span data-i18n="useRegexRename">Use regex rename</span>
-                    <button id="regex-help-button" class="help-mini-button" type="button" title="Regex Help">?</button>
-                  </label>
-                  <div class="grid two">
-                    <label>
-                      <span data-i18n="pattern">Pattern</span>
-                      <input id="regex-pattern" type="text" placeholder="^IMG_" />
-                    </label>
-                    <label>
-                      <span data-i18n="replace">Replace</span>
-                      <input id="regex-replacement" type="text" placeholder="product_" />
-                    </label>
-                  </div>
-                  <label>
-                    <span data-i18n="flags">Flags</span>
-                    <input id="regex-flags" type="text" value="g" />
-                  </label>
-                </div>
-              </details>
-
-              <details class="group" open>
-                <summary class="group-summary">
-                  <span data-i18n="export">Export</span>
-                </summary>
-                <div class="group-body">
-                  <div class="inline-row export-row">
-                    <button id="pick-output-button" class="secondary-button" type="button" data-i18n="chooseSaveFolder">Choose Save Folder</button>
-                    <button id="process-button" class="primary-button strong" type="button" data-i18n="export">Export</button>
-                  </div>
-                  <div id="output-directory" class="info-box" data-i18n="defaultSaveFolder">Default: save next to each source image</div>
-                  <label class="switch">
-                    <input id="clear-after-export" type="checkbox" />
-                    <span data-i18n="clearAfterExport">Clear image list after export</span>
-                  </label>
-                  <div id="status-box" class="info-box" data-i18n="ready">Ready</div>
-                  <div id="result-list" class="result-list"></div>
-                </div>
-              </details>
-            </div>
-          </div>
-        </section>
-      </main>
-
-      <div id="drop-overlay" class="drop-overlay">
-        <div class="drop-overlay-card">
-          <strong data-i18n="dropHere">Drop images here</strong>
-          <span data-i18n="dropSupport">PNG, JPG, WEBP, TIFF, BMP, GIF</span>
+        <div class="title-wrap">
+          <strong class="title" data-i18n="appTitle">EZCut</strong>
+          <span class="subtitle" data-i18n="appSubtitle">Batch image editor</span>
         </div>
       </div>
 
-      <!-- Modal for Regex Help -->
-      <div id="regex-modal" class="modal">
-        <div class="modal-backdrop"></div>
-        <div class="modal-container">
-          <div class="modal-header">
-            <h3 data-i18n="regexHelpTitle">Filename Regex Guide</h3>
-            <button id="close-modal" class="close-button">&times;</button>
-          </div>
-          <div class="modal-content">
-            <div id="regex-help-body" class="help-content">
-              <!-- Content will be injected via JS or translations -->
+      <div class="titlebar-right">
+        <select id="language-picker" class="language-picker" aria-label="Language">
+          <option value="en">English</option>
+          <option value="zh-CN">简体中文</option>
+          <option value="zh-TW">繁體中文</option>
+          <option value="ja">日本語</option>
+          <option value="ko">한국어</option>
+        </select>
+        <input id="file-input" type="file" accept=".png,.jpg,.jpeg,.webp,.tiff,.bmp,.gif" multiple hidden />
+      </div>
+    </header>
+
+    <main class="split-view">
+      <section id="left-column" class="column left-column">
+        <div class="card preview-card">
+          <div class="card-header preview-header">
+            <div>
+              <p class="eyebrow" data-i18n="previewEyebrow">Preview</p>
+              <h2 data-i18n="previewTitle">Image Preview</h2>
             </div>
           </div>
-          <div class="modal-footer">
-            <button id="close-modal-btn" class="secondary-button" data-i18n="close">Close</button>
+
+          <div id="preview-surface" class="preview-surface">
+            <canvas id="preview-canvas"></canvas>
+          </div>
+          <div id="preview-meta" class="meta-strip" data-i18n="noImageSelected">No image selected</div>
+        </div>
+
+        <div class="card list-card">
+          <div class="card-header">
+            <div>
+              <p class="eyebrow" data-i18n="libraryEyebrow">Library</p>
+              <h2 data-i18n="imagesTitle">Images</h2>
+            </div>
+            <span id="image-count" class="pill">0</span>
+            <button id="pick-files-button" class="icon-button" type="button" aria-label="Add Images" title="Add Images">
+              <span aria-hidden="true">+</span>
+            </button>
+          </div>
+          <div id="image-list" class="image-list empty-state">
+            <p data-i18n="noImagesYet">No images yet.</p>
           </div>
         </div>
+      </section>
+
+      <section id="right-column" class="column right-column">
+        <div class="card settings-card">
+          <div class="card-header settings-header">
+            <div>
+              <p class="eyebrow" data-i18n="settingsEyebrow">Settings</p>
+              <h2 data-i18n="outputSettings">Output Settings</h2>
+            </div>
+          </div>
+
+          <div class="settings-stack">
+            <details class="group" open>
+              <summary class="group-summary">
+                <span data-i18n="resize">Resize</span>
+              </summary>
+              <div class="group-body">
+                <label class="switch">
+                  <input id="resize-enabled" type="checkbox" checked />
+                  <span data-i18n="enableThis">Enable this section</span>
+                </label>
+                <div class="grid two">
+                  <label>
+                    <span data-i18n="width">Width</span>
+                    <input id="resize-width" type="number" min="1" placeholder="Leave empty" />
+                  </label>
+                  <label>
+                    <span data-i18n="height">Height</span>
+                    <input id="resize-height" type="number" min="1" placeholder="Leave empty" />
+                  </label>
+                </div>
+                <label>
+                  <span data-i18n="mode">Mode</span>
+                  <select id="resize-mode">
+                    <option value="fit" data-i18n="fit">Fit</option>
+                    <option value="fill" data-i18n="fill">Fill</option>
+                    <option value="stretch" data-i18n="stretch">Stretch</option>
+                  </select>
+                </label>
+              </div>
+            </details>
+
+            <details class="group">
+              <summary class="group-summary">
+                <span data-i18n="crop">Crop</span>
+              </summary>
+              <div class="group-body">
+                <label class="switch">
+                  <input id="crop-enabled" type="checkbox" />
+                  <span data-i18n="enableThis">Enable this section</span>
+                </label>
+                <div class="grid two">
+                  <label>
+                    <span>X</span>
+                    <input id="crop-x" type="number" min="0" value="0" />
+                  </label>
+                  <label>
+                    <span>Y</span>
+                    <input id="crop-y" type="number" min="0" value="0" />
+                  </label>
+                </div>
+                <div class="grid two">
+                  <label>
+                    <span data-i18n="width">Width</span>
+                    <input id="crop-width" type="number" min="1" placeholder="Original width" />
+                  </label>
+                  <label>
+                    <span data-i18n="height">Height</span>
+                    <input id="crop-height" type="number" min="1" placeholder="Original height" />
+                  </label>
+                </div>
+              </div>
+            </details>
+
+            <details class="group">
+              <summary class="group-summary">
+                <span data-i18n="textWatermark">Text Watermark</span>
+              </summary>
+              <div class="group-body">
+                <label class="switch">
+                  <input id="watermark-enabled" type="checkbox" />
+                  <span data-i18n="enableThis">Enable this section</span>
+                </label>
+                <label>
+                  <span data-i18n="text">Text</span>
+                  <input id="watermark-text" type="text" placeholder="Watermark text" />
+                </label>
+                <div class="grid two">
+                  <label>
+                    <span data-i18n="size">Size</span>
+                    <input id="watermark-font-size" type="number" min="8" value="30" />
+                  </label>
+                  <label>
+                    <span data-i18n="opacity">Opacity</span>
+                    <input id="watermark-opacity" type="number" min="0.05" max="1" step="0.05" value="0.35" />
+                  </label>
+                </div>
+                <div class="grid two">
+                  <label>
+                    <span data-i18n="margin">Margin</span>
+                    <input id="watermark-margin" type="number" min="0" value="20" />
+                  </label>
+                  <label>
+                    <span data-i18n="color">Color</span>
+                    <input id="watermark-color" type="color" value="#ffffff" />
+                  </label>
+                </div>
+                <label>
+                  <span data-i18n="position">Position</span>
+                  <select id="watermark-position">
+                    <option value="top-left" data-i18n="topLeft">Top Left</option>
+                    <option value="top-center" data-i18n="topCenter">Top Center</option>
+                    <option value="top-right" data-i18n="topRight">Top Right</option>
+                    <option value="center-left" data-i18n="centerLeft">Center Left</option>
+                    <option value="center-center" data-i18n="center">Center</option>
+                    <option value="center-right" data-i18n="centerRight">Center Right</option>
+                    <option value="bottom-left" data-i18n="bottomLeft">Bottom Left</option>
+                    <option value="bottom-center" data-i18n="bottomCenter">Bottom Center</option>
+                    <option value="bottom-right" selected data-i18n="bottomRight">Bottom Right</option>
+                  </select>
+                </label>
+              </div>
+            </details>
+
+            <details class="group">
+              <summary class="group-summary">
+                <span data-i18n="overlayImage">Overlay Image</span>
+              </summary>
+              <div class="group-body">
+                <div class="inline-row">
+                  <label class="switch">
+                    <input id="overlay-enabled" type="checkbox" />
+                    <span data-i18n="enableThis">Enable this section</span>
+                  </label>
+                  <button id="pick-overlay-button" class="secondary-button" type="button"
+                    data-i18n="choose">Choose</button>
+                </div>
+                <div id="overlay-summary" class="info-box" data-i18n="noOverlaySelected">No overlay selected</div>
+                <div class="grid two">
+                  <label>
+                    <span data-i18n="scalePercent">Scale %</span>
+                    <input id="overlay-scale" type="number" min="1" max="300" value="25" />
+                  </label>
+                  <label>
+                    <span data-i18n="opacity">Opacity</span>
+                    <input id="overlay-opacity" type="number" min="0.05" max="1" step="0.05" value="0.75" />
+                  </label>
+                </div>
+                <label>
+                  <span data-i18n="margin">Margin</span>
+                  <input id="overlay-margin" type="number" min="0" value="20" />
+                </label>
+                <label>
+                  <span data-i18n="position">Position</span>
+                  <select id="overlay-position">
+                    <option value="top-left" data-i18n="topLeft">Top Left</option>
+                    <option value="top-center" data-i18n="topCenter">Top Center</option>
+                    <option value="top-right" data-i18n="topRight">Top Right</option>
+                    <option value="center-left" data-i18n="centerLeft">Center Left</option>
+                    <option value="center-center" selected data-i18n="center">Center</option>
+                    <option value="center-right" data-i18n="centerRight">Center Right</option>
+                    <option value="bottom-left" data-i18n="bottomLeft">Bottom Left</option>
+                    <option value="bottom-center" data-i18n="bottomCenter">Bottom Center</option>
+                    <option value="bottom-right" data-i18n="bottomRight">Bottom Right</option>
+                  </select>
+                </label>
+              </div>
+            </details>
+
+            <details class="group">
+              <summary class="group-summary">
+                <span data-i18n="filename">Filename</span>
+              </summary>
+              <div class="group-body">
+                <label>
+                  <span data-i18n="template">Template</span>
+                  <input id="output-template" type="text" value="{name}_edit" />
+                </label>
+                <label>
+                  <span data-i18n="exportCategory">Export Category</span>
+                  <select id="output-format">
+                    <option value="original" selected data-i18n="keepOriginal">Keep original</option>
+                    <option value="png">PNG</option>
+                    <option value="jpg">JPG</option>
+                    <option value="webp">WEBP</option>
+                  </select>
+                </label>
+                <label class="switch">
+                  <input id="regex-enabled" type="checkbox" />
+                  <span data-i18n="useRegexRename">Use regex rename</span>
+                  <button id="regex-help-button" class="help-mini-button" type="button" title="Regex Help">?</button>
+                </label>
+                <div class="grid two">
+                  <label>
+                    <span data-i18n="pattern">Pattern</span>
+                    <input id="regex-pattern" type="text" placeholder="^IMG_" />
+                  </label>
+                  <label>
+                    <span data-i18n="replace">Replace</span>
+                    <input id="regex-replacement" type="text" placeholder="product_" />
+                  </label>
+                </div>
+                <label>
+                  <span data-i18n="flags">Flags</span>
+                  <input id="regex-flags" type="text" value="g" />
+                </label>
+              </div>
+            </details>
+
+            <details class="group" open>
+              <summary class="group-summary">
+                <span data-i18n="export">Export</span>
+              </summary>
+              <div class="group-body">
+                <div class="inline-row export-row">
+                  <button id="pick-output-button" class="secondary-button" type="button"
+                    data-i18n="chooseSaveFolder">Choose Save Folder</button>
+                  <button id="process-button" class="primary-button strong" type="button"
+                    data-i18n="export">Export</button>
+                </div>
+                <div id="output-directory" class="info-box" data-i18n="defaultSaveFolder">Default: save next to each
+                  source image</div>
+                <label class="switch">
+                  <input id="clear-after-export" type="checkbox" />
+                  <span data-i18n="clearAfterExport">Clear image list after export</span>
+                </label>
+                <div id="status-box" class="info-box" data-i18n="ready">Ready</div>
+                <div id="result-list" class="result-list"></div>
+              </div>
+            </details>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div id="drop-overlay" class="drop-overlay">
+      <div class="drop-overlay-card">
+        <strong data-i18n="dropHere">Drop images here</strong>
+        <span data-i18n="dropSupport">PNG, JPG, WEBP, TIFF, BMP, GIF</span>
       </div>
     </div>
 
-    <script src="./app.js"></script>
-  </body>
+    <!-- Modal for Regex Help -->
+    <div id="regex-modal" class="modal">
+      <div class="modal-backdrop"></div>
+      <div class="modal-container">
+        <div class="modal-header">
+          <h3 data-i18n="regexHelpTitle">Filename Regex Guide</h3>
+          <button id="close-modal" class="close-button">&times;</button>
+        </div>
+        <div class="modal-content">
+          <div id="regex-help-body" class="help-content">
+            <!-- Content will be injected via JS or translations -->
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="close-modal-btn" class="secondary-button" data-i18n="close">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+
 </html>
