@@ -145,48 +145,10 @@
                 <span data-i18n="textWatermark">Text Watermark</span>
               </summary>
               <div class="group-body">
-                <label class="switch">
-                  <input id="watermark-enabled" type="checkbox" />
-                  <span data-i18n="enableThis">Enable this section</span>
-                </label>
-                <label>
-                  <span data-i18n="text">Text</span>
-                  <input id="watermark-text" type="text" placeholder="Watermark text" />
-                </label>
-                <div class="grid two">
-                  <label>
-                    <span data-i18n="size">Size</span>
-                    <input id="watermark-font-size" type="number" min="8" value="30" />
-                  </label>
-                  <label>
-                    <span data-i18n="opacity">Opacity</span>
-                    <input id="watermark-opacity" type="number" min="0.05" max="1" step="0.05" value="0.35" />
-                  </label>
+                <div class="layer-controls">
+                  <button id="add-watermark-button" class="secondary-button full" type="button">+ Add Text</button>
                 </div>
-                <div class="grid two">
-                  <label>
-                    <span data-i18n="margin">Margin</span>
-                    <input id="watermark-margin" type="number" min="0" value="20" />
-                  </label>
-                  <label>
-                    <span data-i18n="color">Color</span>
-                    <input id="watermark-color" type="color" value="#ffffff" />
-                  </label>
-                </div>
-                <label>
-                  <span data-i18n="position">Position</span>
-                  <select id="watermark-position">
-                    <option value="top-left" data-i18n="topLeft">Top Left</option>
-                    <option value="top-center" data-i18n="topCenter">Top Center</option>
-                    <option value="top-right" data-i18n="topRight">Top Right</option>
-                    <option value="center-left" data-i18n="centerLeft">Center Left</option>
-                    <option value="center-center" data-i18n="center">Center</option>
-                    <option value="center-right" data-i18n="centerRight">Center Right</option>
-                    <option value="bottom-left" data-i18n="bottomLeft">Bottom Left</option>
-                    <option value="bottom-center" data-i18n="bottomCenter">Bottom Center</option>
-                    <option value="bottom-right" selected data-i18n="bottomRight">Bottom Right</option>
-                  </select>
-                </label>
+                <div id="watermark-list" class="layer-list"></div>
               </div>
             </details>
 
@@ -195,43 +157,10 @@
                 <span data-i18n="overlayImage">Overlay Image</span>
               </summary>
               <div class="group-body">
-                <div class="inline-row">
-                  <label class="switch">
-                    <input id="overlay-enabled" type="checkbox" />
-                    <span data-i18n="enableThis">Enable this section</span>
-                  </label>
-                  <button id="pick-overlay-button" class="secondary-button" type="button"
-                    data-i18n="choose">Choose</button>
+                <div class="layer-controls">
+                  <button id="add-overlay-button" class="secondary-button full" type="button">+ Add Image</button>
                 </div>
-                <div id="overlay-summary" class="info-box" data-i18n="noOverlaySelected">No overlay selected</div>
-                <div class="grid two">
-                  <label>
-                    <span data-i18n="scalePercent">Scale %</span>
-                    <input id="overlay-scale" type="number" min="1" max="300" value="25" />
-                  </label>
-                  <label>
-                    <span data-i18n="opacity">Opacity</span>
-                    <input id="overlay-opacity" type="number" min="0.05" max="1" step="0.05" value="0.75" />
-                  </label>
-                </div>
-                <label>
-                  <span data-i18n="margin">Margin</span>
-                  <input id="overlay-margin" type="number" min="0" value="20" />
-                </label>
-                <label>
-                  <span data-i18n="position">Position</span>
-                  <select id="overlay-position">
-                    <option value="top-left" data-i18n="topLeft">Top Left</option>
-                    <option value="top-center" data-i18n="topCenter">Top Center</option>
-                    <option value="top-right" data-i18n="topRight">Top Right</option>
-                    <option value="center-left" data-i18n="centerLeft">Center Left</option>
-                    <option value="center-center" selected data-i18n="center">Center</option>
-                    <option value="center-right" data-i18n="centerRight">Center Right</option>
-                    <option value="bottom-left" data-i18n="bottomLeft">Bottom Left</option>
-                    <option value="bottom-center" data-i18n="bottomCenter">Bottom Center</option>
-                    <option value="bottom-right" data-i18n="bottomRight">Bottom Right</option>
-                  </select>
-                </label>
+                <div id="overlay-list" class="layer-list"></div>
               </div>
             </details>
 

@@ -54,6 +54,8 @@ struct OverlayOptions {
     opacity: f32,
     margin: u32,
     position: String,
+    x: Option<i64>,
+    y: Option<i64>,
 }
 
 #[derive(Clone, Deserialize)]
@@ -74,7 +76,7 @@ struct ProcessPayload {
     output_directory: Option<String>,
     resize: ResizeOptions,
     crop: CropOptions,
-    overlay: OverlayOptions,
+    overlays: Vec<OverlayOptions>,
     naming: NamingOptions,
     watermark_png_base64: Option<String>,
 }
@@ -302,14 +304,29 @@ fn get_preview_data(path: String) -> Result<PreviewData, String> {
     })
 }
 
-fn process_single_frame(
-    image: DynamicImage,
-    payload: &ProcessPayload,
-) -> Result<DynamicImage, String> {
-    let image = crop_image(image, &payload.crop);
-    let mut image = resize_image(image, &payload.resize);
-    apply_overlay(&mut image, &payload.overlay)?;
+fn process_single_frame(image: DynamicImage, payload: &ProcessPayload) -> Result<DynamicImage, String> {
+    let mut image = image;
+
+    // 1. 裁剪。
+    if payload.crop.enabled {
+        let w = payload.crop.width.unwrap_or(image.width());
+        let h = payload.crop.height.unwrap_or(image.height());
+        image = image.crop_imm(payload.crop.x, payload.crop.y, w, h);
+    }
+
+    // 2. 缩放。
+    if payload.resize.enabled {
+        image = resize_image(image, &payload.resize);
+    }
+
+    // 3. 叠加所有图层。
+    for overlay in &payload.overlays {
+        apply_overlay(&mut image, overlay)?;
+    }
+
+    // 4. 应用整体水印。
     apply_watermark(&mut image, &payload.watermark_png_base64)?;
+
     Ok(image)
 }
 
@@ -410,14 +427,19 @@ fn apply_overlay(base: &mut DynamicImage, overlay: &OverlayOptions) -> Result<()
     );
     apply_alpha(&mut top, overlay.opacity);
 
-    let (left, top_pos) = overlay_position(
-        base_width,
-        base_height,
-        top.width(),
-        top.height(),
-        &overlay.position,
-        overlay.margin,
-    );
+    // 优先使用强制坐标 (x, y)，否则使用九宫格对齐逻辑。
+    let (left, top_pos) = if let (Some(x), Some(y)) = (overlay.x, overlay.y) {
+        (x, y)
+    } else {
+        overlay_position(
+            base_width,
+            base_height,
+            top.width(),
+            top.height(),
+            &overlay.position,
+            overlay.margin,
+        )
+    };
 
     imageops::overlay(base, &DynamicImage::ImageRgba8(top), left, top_pos);
     Ok(())
