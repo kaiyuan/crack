@@ -106,12 +106,14 @@ const overlayModel=(w,h,overlayImg,st)=>{
 
 const drawHandles=(ctx,r,color)=>{
     if(!r)return; const sz=getVisualSize();
+    ctx.save(); ctx.globalAlpha=0.75;
     ctx.fillStyle='#fff'; ctx.strokeStyle=color; ctx.lineWidth=sz/4;
     const h=[{x:r.x,y:r.y},{x:r.x+r.width,y:r.y},{x:r.x,y:r.y+r.height},{x:r.x+r.width,y:r.y+r.height}];
     h.forEach(p=>{
         ctx.beginPath();ctx.arc(p.x,p.y,sz/1.2,0,Math.PI*2);ctx.fill();ctx.stroke();
         ctx.fillStyle=color;ctx.beginPath();ctx.arc(p.x,p.y,sz/3,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff';
     });
+    ctx.restore();
 };
 
 const drawCrop=(ctx,r,w,h)=>{
@@ -256,7 +258,7 @@ async function init(){
 
 const getVisualSize=()=>{
     const r=e.previewCanvas.getBoundingClientRect();
-    return r.width ? 14*(e.previewCanvas.width/r.width) : 14;
+    return r.width ? 7*(e.previewCanvas.width/r.width) : 7;
 };
 const hitHandle=(pt,r)=>{
     if(!r)return null; const size=getVisualSize();
