@@ -105,14 +105,13 @@ const overlayModel=(w,h,overlayImg,st)=>{
 };
 
 const drawHandles=(ctx,r,color)=>{
-    const size=Math.max(8,Math.min(r.width,r.height)/10);
-    const h=[[r.x,r.y],[r.x+r.width,r.y],[r.x,r.y+r.height],[r.x+r.width,r.y+r.height]];
-    ctx.save();
-    h.forEach(([x,y])=>{
-        ctx.fillStyle='#fff'; ctx.strokeStyle=color; ctx.lineWidth=1.5;
-        ctx.fillRect(x-size/2,y-size/2,size,size); ctx.strokeRect(x-size/2,y-size/2,size,size);
+    if(!r)return; const sz=getVisualSize();
+    ctx.fillStyle='#fff'; ctx.strokeStyle=color; ctx.lineWidth=sz/4;
+    const h=[{x:r.x,y:r.y},{x:r.x+r.width,y:r.y},{x:r.x,y:r.y+r.height},{x:r.x+r.width,y:r.y+r.height}];
+    h.forEach(p=>{
+        ctx.beginPath();ctx.arc(p.x,p.y,sz/1.2,0,Math.PI*2);ctx.fill();ctx.stroke();
+        ctx.fillStyle=color;ctx.beginPath();ctx.arc(p.x,p.y,sz/3,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff';
     });
-    ctx.restore();
 };
 
 const drawCrop=(ctx,r,w,h)=>{
@@ -255,8 +254,12 @@ async function init(){
     applyPlatform();applyLocale(s.locale);
 }
 
+const getVisualSize=()=>{
+    const r=e.previewCanvas.getBoundingClientRect();
+    return r.width ? 14*(e.previewCanvas.width/r.width) : 14;
+};
 const hitHandle=(pt,r)=>{
-    if(!r)return null; const size=Math.max(12,e.previewCanvas.width/35);
+    if(!r)return null; const size=getVisualSize();
     const h={nw:{x:r.x,y:r.y},ne:{x:r.x+r.width,y:r.y},sw:{x:r.x,y:r.y+r.height},se:{x:r.x+r.width,y:r.y+r.height}};
     return Object.entries(h).find(([,v])=>Math.abs(pt.x-v.x)<=size&&Math.abs(pt.y-v.y)<=size)?.[0]||null;
 };
@@ -264,27 +267,31 @@ const hitRect=(pt,r)=>r&&(pt.x>=r.x&&pt.x<=r.x+r.width&&pt.y>=r.y&&pt.y<=r.y+r.h
 
 function onPreviewDown(event){
     if(!s.previewImage)return; const pt=canvasPoint(event);
-    if(chk('crop-enabled')){
-        const h=hitHandle(pt,s.previewCropRect); if(h){s.interaction={type:'crop-resize',handle:h,start:pt,rect:{...s.previewCropRect}}; }
-        else if(hitRect(pt,s.previewCropRect)){s.interaction={type:'crop-move',start:pt,rect:{...s.previewCropRect}}; }
+    
+    // 优先级 1: 检查所有活动的手柄 (最高优先级)
+    if(chk('watermark-enabled')){ const h=hitHandle(pt,s.previewWatermark); if(h){s.interaction={type:'watermark-resize',handle:h,start:pt,watermark:{...s.previewWatermark}};}}
+    if(!s.interaction && chk('overlay-enabled')){ const h=hitHandle(pt,s.previewOverlayRect); if(h){s.interaction={type:'overlay-resize',handle:h,start:pt,overlay:{...s.previewOverlayRect}};}}
+    if(!s.interaction && chk('crop-enabled')){ const h=hitHandle(pt,s.previewCropRect); if(h){s.interaction={type:'crop-resize',handle:h,start:pt,rect:{...s.previewCropRect}};}}
+
+    // 优先级 2: 水印和图层的内部 (穿透裁剪框)
+    if(!s.interaction && chk('watermark-enabled') && hitRect(pt,s.previewWatermark)){
+        s.interaction={type:'watermark-move',start:pt,watermark:{...s.previewWatermark}};
     }
-    if(!s.interaction && chk('watermark-enabled')){
-        const wm=s.previewWatermark; if(wm){
-            const h=hitHandle(pt,wm); if(h){s.interaction={type:'watermark-resize',handle:h,start:pt,watermark:{...wm}}; }
-            else if(hitRect(pt,wm)){s.interaction={type:'watermark-move',start:pt,watermark:{...wm}}; }
-        }
+    if(!s.interaction && chk('overlay-enabled') && hitRect(pt,s.previewOverlayRect)){
+        s.interaction={type:'overlay-move',start:pt,overlay:{...s.previewOverlayRect}};
     }
-    if(!s.interaction && chk('overlay-enabled')){
-        const ov=s.previewOverlayRect; if(ov){
-            const h=hitHandle(pt,ov); if(h){s.interaction={type:'overlay-resize',handle:h,start:pt,overlay:{...ov}}; }
-            else if(hitRect(pt,ov)){s.interaction={type:'overlay-move',start:pt,overlay:{...ov}}; }
-        }
+
+    // 优先级 3: 裁剪框内部
+    if(!s.interaction && chk('crop-enabled') && hitRect(pt,s.previewCropRect)){
+        s.interaction={type:'crop-move',start:pt,rect:{...s.previewCropRect}};
     }
+
     if(s.interaction){
         window.addEventListener('pointermove', onPreviewMove);
         window.addEventListener('pointerup', onPreviewUp);
         try{e.previewCanvas.setPointerCapture(event.pointerId);}catch(_){}
         event.preventDefault();
+        renderPreview();
     }
 }
 

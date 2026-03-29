@@ -163,7 +163,8 @@ select {
   max-width: 320px;
   min-width: 0;
   margin-left: auto;
-  overflow-y: auto; /* 右侧栏开启整体滚动 */
+  overflow-y: auto; /* 核心：整体滚动 */
+  min-height: 0;
   padding-right: 4px;
 }
 
@@ -212,8 +213,9 @@ h2 {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  min-height: 0;
-  overflow: visible; /* 允许设置项目自然撑开 */
+  height: auto;
+  min-height: min-content;
+  overflow: visible; /* 必须 visible，让项目自然向下排布 */
 }
 
 .preview-surface {
@@ -230,11 +232,12 @@ h2 {
     linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(241, 244, 248, 0.96)),
     repeating-linear-gradient(
       45deg,
-      rgba(189, 198, 211, 0.16) 0,
-      rgba(189, 198, 211, 0.16) 10px,
-      rgba(255, 255, 255, 0.4) 10px,
-      rgba(255, 255, 255, 0.4) 20px
+      rgba(152, 163, 180, 0.2) 0,
+      rgba(152, 163, 180, 0.2) 10px,
+      rgba(255, 255, 255, 0.6) 10px,
+      rgba(255, 255, 255, 0.6) 20px
     );
+  box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
 }
 
 .preview-surface canvas {
