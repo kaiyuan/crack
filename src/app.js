@@ -11,7 +11,7 @@ const tr={en:{appTitle:'EZCut',appSubtitle:'Batch image editor',previewEyebrow:'
 /* 运行期状态：集中管理文件、选中项与预览交互。 */
 const s={files:[],selectedId:null,overlayFile:null,outputDirectory:'',platform:'windows',locale:'en',isDragOverlayVisible:false,previewCache:{},previewToken:0,previewImage:null,previewCropRect:null,previewWatermark:null,previewOverlayRect:null,interaction:null,watermarkDraft:null,overlayDraft:null};
 const e={windowShell:document.querySelector('.window-shell'),leftColumn:document.getElementById('left-column'),fileInput:document.getElementById('file-input'),imageList:document.getElementById('image-list'),imageCount:document.getElementById('image-count'),previewCanvas:document.getElementById('preview-canvas'),previewMeta:document.getElementById('preview-meta'),pickFilesButton:document.getElementById('pick-files-button'),pickOverlayButton:document.getElementById('pick-overlay-button'),overlaySummary:document.getElementById('overlay-summary'),pickOutputButton:document.getElementById('pick-output-button'),outputDirectory:document.getElementById('output-directory'),processButton:document.getElementById('process-button'),clearAfterExport:document.getElementById('clear-after-export'),statusBox:document.getElementById('status-box'),resultList:document.getElementById('result-list'),dropOverlay:document.getElementById('drop-overlay'),languagePicker:document.getElementById('language-picker'),regexModal:document.getElementById('regex-modal'),regexHelpButton:document.getElementById('regex-help-button'),closeModalButtons:document.querySelectorAll('#close-modal, #close-modal-btn'),regexHelpBody:document.getElementById('regex-help-body')};
-let timer=null;
+let timer=null,isRendering=false;
 const n=(v,min,max)=>Math.min(max,Math.max(min,v));
 const loc=(raw)=>{if(!raw)return'en';const v=raw.toLowerCase();if(v.startsWith('zh-cn')||v.startsWith('zh-sg'))return'zh-CN';if(v.startsWith('zh-tw')||v.startsWith('zh-hk')||v.startsWith('zh-mo'))return'zh-TW';if(v.startsWith('ja'))return'ja';if(v.startsWith('ko'))return'ko';if(v.startsWith('zh'))return'zh-CN';return'en';};
 const tt=(k,vars={})=>((tr[s.locale]||tr.en)[k]||tr.en[k]||k).replace(/\{(\w+)\}/g,(_,t)=>String(vars[t]??''));
@@ -120,16 +120,29 @@ const drawOverlayRect=(ctx,r)=>{
     const size=Math.max(8,r.width/20);ctx.fillStyle='#fff';ctx.fillRect(r.x+r.width-size/2,r.y+r.height-size/2,size,size);ctx.strokeRect(r.x+r.width-size/2,r.y+r.height-size/2,size,size);ctx.restore();
 };
 
-const schedule=(delay=80)=>{clearTimeout(timer);timer=setTimeout(()=>{void renderPreview();},delay);};
+const schedule=(delay=150)=>{
+    clearTimeout(timer);
+    timer=setTimeout(()=>{
+        if(!isRendering) void renderPreview();
+    },delay);
+};
 
 async function renderPreview(){
-    const token=++s.previewToken,file=sel(),canvas=e.previewCanvas,ctx=canvas.getContext('2d');
-    s.previewImage=null;s.previewCropRect=null;s.previewWatermark=null;s.previewOverlayRect=null;
-    if(!file){canvas.width=1;canvas.height=1;ctx.clearRect(0,0,1,1);e.previewMeta.textContent=tt('noImageSelected');return;}
-    e.previewMeta.textContent=tt('selectedMeta',{name:file.name,width:file.width,height:file.height,size:bytes(file.size_bytes)});
+    const file=sel(); if(!file && s.previewImage){ s.previewImage=null; schedule(0); return; }
+    if(isRendering) return;
+    const token=++s.previewToken,canvas=e.previewCanvas,ctx=canvas.getContext('2d');
+    isRendering=true;
     try{
-        const src=await previewData(file.path),img=await loadImage(src);if(token!==s.previewToken||sel()?.path!==file.path)return;
-        s.previewImage=img;ensureCropDefaults(img);canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;
+        if(!file){
+            canvas.width=1;canvas.height=1;ctx.clearRect(0,0,1,1);
+            e.previewMeta.textContent=tt('noImageSelected');
+            return;
+        }
+        e.previewMeta.textContent=tt('selectedMeta',{name:file.name,width:file.width,height:file.height,size:bytes(file.size_bytes)});
+        const src=await previewData(file.path),img=await loadImage(src);
+        if(token!==s.previewToken||sel()?.path!==file.path) return;
+        s.previewImage=img;ensureCropDefaults(img);
+        canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;
         ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);
         const st=settings();
         if(st.overlay.enabled&&s.overlayFile){
@@ -137,7 +150,9 @@ async function renderPreview(){
                 const oSrc=await previewData(s.overlayFile.path),oImg=await loadImage(oSrc);
                 const rect=overlayModel(canvas.width,canvas.height,oImg,st);
                 if(token===s.previewToken && rect){
-                    s.previewOverlayRect=rect;ctx.save();ctx.globalAlpha=st.overlay.opacity;ctx.drawImage(oImg,rect.x,rect.y,rect.width,rect.height);ctx.restore();
+                    s.previewOverlayRect=rect;ctx.save();ctx.globalAlpha=st.overlay.opacity;
+                    ctx.drawImage(oImg,rect.x,rect.y,rect.width,rect.height);
+                    ctx.restore();
                     drawOverlayRect(ctx,rect);
                 }
             } catch(e) { console.error("Overlay load error", e); }
@@ -150,18 +165,19 @@ async function renderPreview(){
             const cr=cropRect(img);if(token===s.previewToken && cr){ s.previewCropRect=cr; drawCrop(ctx,cr,canvas.width,canvas.height); }
         }
     }catch(_){canvas.width=1;canvas.height=1;ctx.clearRect(0,0,1,1);}
+    finally{ isRendering=false; }
 }
 
 const renderFiles=()=>{
     renderLeft();e.imageCount.textContent=String(s.files.length);e.imageList.innerHTML='';
-    if(s.files.length===0){s.selectedId=null;e.imageList.classList.add('empty-state');e.imageList.innerHTML=`<p>${tt('noImagesYet')}</p>`;schedule(0);return;}
+    if(s.files.length===0){s.selectedId=null;e.imageList.classList.add('empty-state');e.imageList.innerHTML=`<p>${tt('noImagesYet')}</p>`;schedule(10);return;}
     if(!sel())s.selectedId=s.files[0].id;e.imageList.classList.remove('empty-state');
     const frag=document.createDocumentFragment();
     s.files.forEach((file)=>{
         const item=document.createElement('article');item.className=`image-item${file.id===s.selectedId?' selected':''}`;item.dataset.id=file.id;
         item.innerHTML=`<div class="image-item-head"><span class="image-name" title="${file.name}">${file.name}</span><button class="remove-button" type="button" data-id="${file.id}">${tt('remove')}</button></div><div class="image-item-meta"><span>${file.width} x ${file.height}</span><span>${bytes(file.size_bytes)}</span></div><div class="image-path" title="${file.path}">${file.path}</div>`;
         frag.appendChild(item);
-    });e.imageList.appendChild(frag);schedule(0);
+    });e.imageList.appendChild(frag);schedule(10);
 };
 const renderOverlayFile=()=>{if(!s.overlayFile){e.overlaySummary.textContent=tt('noOverlaySelected');return;}e.overlaySummary.textContent=`${s.overlayFile.name} · ${s.overlayFile.width} x ${s.overlayFile.height}`;schedule(0);};
 const mergeFiles=(files)=>{const known=new Set(s.files.map((i)=>i.path));files.forEach((file)=>{if(!known.has(file.path)){s.files.push(file);known.add(file.path);}});if(!s.selectedId&&s.files.length>0)s.selectedId=s.files[0].id;renderFiles();};
