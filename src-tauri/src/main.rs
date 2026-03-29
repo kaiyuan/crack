@@ -8,6 +8,7 @@ use image::{DynamicImage, ImageFormat, RgbaImage};
 use regex::RegexBuilder;
 use serde::{Deserialize, Serialize};
 use std::fs;
+use std::io::Cursor;
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 use tauri::api::dialog::blocking::FileDialogBuilder;
@@ -302,7 +303,7 @@ fn get_preview_data(path: String) -> Result<PreviewData, String> {
 }
 
 fn process_single_frame(
-    mut image: DynamicImage,
+    image: DynamicImage,
     payload: &ProcessPayload,
 ) -> Result<DynamicImage, String> {
     let image = crop_image(image, &payload.crop);
@@ -569,8 +570,8 @@ fn process_images(payload: ProcessPayload) -> Result<ProcessSummary, String> {
             // 特殊处理 GIF 动图分帧。
             if format == ImageFormat::Gif && output_format_str == "gif" {
                 use image::AnimationDecoder;
-                let decoder = image::codecs::gif::GifDecoder::new(&file_bytes[..]).map_err(|e| e.to_string())?;
-                let frames = decoder.into_frames().collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?;
+                let decoder = image::codecs::gif::GifDecoder::new(Cursor::new(&file_bytes)).map_err(|e| e.to_string())?;
+                let frames = decoder.into_frames().collect::<image::ImageResult<Vec<image::Frame>>>().map_err(|e: image::ImageError| e.to_string())?;
                 
                 if frames.len() > 1 {
                     let out_file = fs::File::create(&output_path).map_err(|e| e.to_string())?;
