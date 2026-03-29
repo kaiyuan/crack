@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -253,6 +253,7 @@
                   <label class="switch">
                     <input id="regex-enabled" type="checkbox" />
                     <span data-i18n="useRegexRename">Use regex rename</span>
+                    <button id="regex-help-button" class="help-mini-button" type="button" title="Regex Help">?</button>
                   </label>
                   <div class="grid two">
                     <label>
@@ -300,12 +301,28 @@
           <span data-i18n="dropSupport">PNG, JPG, WEBP, TIFF, BMP, GIF</span>
         </div>
       </div>
+
+      <!-- Modal for Regex Help -->
+      <div id="regex-modal" class="modal">
+        <div class="modal-backdrop"></div>
+        <div class="modal-container">
+          <div class="modal-header">
+            <h3 data-i18n="regexHelpTitle">Filename Regex Guide</h3>
+            <button id="close-modal" class="close-button">&times;</button>
+          </div>
+          <div class="modal-content">
+            <div id="regex-help-body" class="help-content">
+              <!-- Content will be injected via JS or translations -->
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button id="close-modal-btn" class="secondary-button" data-i18n="close">Close</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <script src="./app.js"></script>
   </body>
-</html>
-
-
 
 

@@ -1,4 +1,4 @@
-﻿#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 use base64::Engine;
@@ -114,7 +114,7 @@ struct PreviewData {
     data_url: String,
 }
 
-// 统一限定当前版本可处理的图片格式，避免前后端规则不一致。
+// 统一限定当前版本可处理的图片格式。
 fn is_supported_format(format: ImageFormat) -> bool {
     matches!(
         format,
@@ -124,10 +124,13 @@ fn is_supported_format(format: ImageFormat) -> bool {
             | ImageFormat::Bmp
             | ImageFormat::Gif
             | ImageFormat::Tiff
+            | ImageFormat::Tga
+            | ImageFormat::Pnm
+            | ImageFormat::Dds
+            | ImageFormat::Farbfeld
     )
 }
 
-// 将 image crate 的格式枚举映射为项目内部统一扩展名。
 fn normalized_extension(format: ImageFormat) -> &'static str {
     match format {
         ImageFormat::Jpeg => "jpg",
@@ -135,11 +138,11 @@ fn normalized_extension(format: ImageFormat) -> &'static str {
         ImageFormat::Bmp => "bmp",
         ImageFormat::Gif => "gif",
         ImageFormat::Tiff => "tiff",
+        ImageFormat::Tga => "tga",
         _ => "png",
     }
 }
 
-// 预览数据 URL 需要准确的 MIME，按真实格式返回。
 fn mime_for_format(format: ImageFormat) -> &'static str {
     match format {
         ImageFormat::Jpeg => "image/jpeg",
@@ -151,7 +154,6 @@ fn mime_for_format(format: ImageFormat) -> &'static str {
     }
 }
 
-// 一次探测格式与尺寸，减少重复打开文件造成的额外 I/O。
 fn probe_image(path: &Path) -> Result<(ImageFormat, (u32, u32)), String> {
     let reader = image::ImageReader::open(path).map_err(|error| error.to_string())?;
     let guessed = reader
@@ -169,7 +171,6 @@ fn probe_image(path: &Path) -> Result<(ImageFormat, (u32, u32)), String> {
     Ok((format, dimensions))
 }
 
-// 使用稳定的最后修改时间戳，保证同一文件反复导入时 id 可预测。
 fn stable_modified_token(metadata: &fs::Metadata) -> u128 {
     metadata
         .modified()
@@ -179,7 +180,6 @@ fn stable_modified_token(metadata: &fs::Metadata) -> u128 {
         .unwrap_or_default()
 }
 
-// 规范化单个文件：校验、探测、提取元信息并构建前端可用对象。
 fn normalize_file(path: &Path) -> Result<ImageFile, String> {
     let metadata = fs::metadata(path).map_err(|error| error.to_string())?;
     if !metadata.is_file() {
@@ -210,13 +210,15 @@ fn normalize_file(path: &Path) -> Result<ImageFile, String> {
 #[tauri::command]
 fn pick_files() -> Result<Vec<ImageFile>, String> {
     let picked = FileDialogBuilder::new()
-        .add_filter("Images", &["png", "jpg", "jpeg", "webp", "bmp", "gif", "tiff"])
+        .add_filter("Images", &["png", "jpg", "jpeg", "webp", "bmp", "gif", "tiff", "tga", "avif"])
         .pick_files();
 
     let mut files = Vec::new();
     if let Some(paths) = picked {
         for path in paths {
-            files.push(normalize_file(&path)?);
+            if let Ok(file) = normalize_file(&path) {
+                files.push(file);
+            }
         }
     }
     Ok(files)
@@ -252,7 +254,6 @@ fn default_output_directory() -> String {
     String::from("source")
 }
 
-// 未指定输出目录时，默认回落到源图所在目录。
 fn source_directory(file: &ImageFile) -> PathBuf {
     Path::new(&file.path)
         .parent()
@@ -284,7 +285,6 @@ fn get_runtime_info() -> RuntimeInfo {
 
 #[tauri::command]
 fn get_preview_data(path: String) -> Result<PreviewData, String> {
-    // 直接基于已读取字节猜测格式，避免再额外读一次磁盘文件。
     let bytes = fs::read(&path).map_err(|error| error.to_string())?;
     let format = image::guess_format(&bytes).map_err(|error| error.to_string())?;
     if !is_supported_format(format) {
@@ -301,7 +301,17 @@ fn get_preview_data(path: String) -> Result<PreviewData, String> {
     })
 }
 
-// 裁剪参数统一做边界收敛，避免越界导致 panic。
+fn process_single_frame(
+    mut image: DynamicImage,
+    payload: &ProcessPayload,
+) -> Result<DynamicImage, String> {
+    let image = crop_image(image, &payload.crop);
+    let mut image = resize_image(image, &payload.resize);
+    apply_overlay(&mut image, &payload.overlay)?;
+    apply_watermark(&mut image, &payload.watermark_png_base64)?;
+    Ok(image)
+}
+
 fn crop_image(image: DynamicImage, options: &CropOptions) -> DynamicImage {
     if !options.enabled {
         return image;
@@ -323,7 +333,6 @@ fn crop_image(image: DynamicImage, options: &CropOptions) -> DynamicImage {
     image.crop_imm(safe_x, safe_y, width, height)
 }
 
-// 缩放支持 fit/fill/stretch 三种策略，便于前端直接切换模式。
 fn resize_image(image: DynamicImage, options: &ResizeOptions) -> DynamicImage {
     if !options.enabled || (options.width.is_none() && options.height.is_none()) {
         return image;
@@ -341,7 +350,6 @@ fn resize_image(image: DynamicImage, options: &ResizeOptions) -> DynamicImage {
     }
 }
 
-// 根据九宫格位置与边距计算覆盖图层最终落点。
 fn overlay_position(
     base_width: u32,
     base_height: u32,
@@ -364,7 +372,6 @@ fn overlay_position(
     (left.max(0), top.max(0))
 }
 
-// 仅调整 alpha 通道，实现覆盖图层透明度控制。
 fn apply_alpha(image: &mut RgbaImage, opacity: f32) {
     for pixel in image.pixels_mut() {
         let alpha = (pixel[3] as f32 * opacity.clamp(0.0, 1.0)).round() as u8;
@@ -372,7 +379,6 @@ fn apply_alpha(image: &mut RgbaImage, opacity: f32) {
     }
 }
 
-// 图层覆盖：缩放、透明度处理、定位后叠加到基图。
 fn apply_overlay(base: &mut DynamicImage, overlay: &OverlayOptions) -> Result<(), String> {
     if !overlay.enabled {
         return Ok(());
@@ -416,7 +422,6 @@ fn apply_overlay(base: &mut DynamicImage, overlay: &OverlayOptions) -> Result<()
     Ok(())
 }
 
-// 前端传来的水印是透明 PNG，按画布大小缩放后整体叠加。
 fn apply_watermark(base: &mut DynamicImage, watermark_png_base64: &Option<String>) -> Result<(), String> {
     let Some(encoded) = watermark_png_base64 else {
         return Ok(());
@@ -434,7 +439,6 @@ fn apply_watermark(base: &mut DynamicImage, watermark_png_base64: &Option<String
     Ok(())
 }
 
-// 统一输出命名规则：模板变量、正则替换、非法字符清理。
 fn output_name(file: &ImageFile, index: usize, naming: &NamingOptions) -> Result<String, String> {
     let mut base_name = Path::new(&file.path)
         .file_stem()
@@ -486,7 +490,6 @@ fn output_name(file: &ImageFile, index: usize, naming: &NamingOptions) -> Result
     })
 }
 
-// 按目标格式编码输出；对 JPEG/PNG 使用显式编码参数控制体积与质量。
 fn save_image(image: &DynamicImage, format_name: &str, path: &Path) -> Result<(), String> {
     use image::codecs::jpeg::JpegEncoder;
     use image::codecs::png::{CompressionType, FilterType as PngFilterType, PngEncoder};
@@ -516,6 +519,7 @@ fn save_image(image: &DynamicImage, format_name: &str, path: &Path) -> Result<()
         "bmp" => image.save_with_format(path, ImageFormat::Bmp).map_err(|error| error.to_string()),
         "gif" => image.save_with_format(path, ImageFormat::Gif).map_err(|error| error.to_string()),
         "tiff" => image.save_with_format(path, ImageFormat::Tiff).map_err(|error| error.to_string()),
+        "tga" => image.save_with_format(path, ImageFormat::Tga).map_err(|error| error.to_string()),
         _ => {
             let encoder = PngEncoder::new_with_quality(
                 &mut writer,
@@ -531,7 +535,6 @@ fn save_image(image: &DynamicImage, format_name: &str, path: &Path) -> Result<()
 
 #[tauri::command]
 fn process_images(payload: ProcessPayload) -> Result<ProcessSummary, String> {
-    // summary_directory 仅用于回传展示，不改变“每图默认存回源目录”的行为。
     let summary_directory = payload
         .output_directory
         .clone()
@@ -544,15 +547,11 @@ fn process_images(payload: ProcessPayload) -> Result<ProcessSummary, String> {
     let mut results = Vec::new();
     let mut errors = Vec::new();
 
-    // 批量处理时单张失败不阻断整个任务，所有错误统一回传给前端。
     for (index, file) in payload.files.iter().enumerate() {
         let result = (|| -> Result<ProcessResultItem, String> {
-            let image = image::open(&file.path).map_err(|error| error.to_string())?;
-            let image = crop_image(image, &payload.crop);
-            let mut image = resize_image(image, &payload.resize);
-            apply_overlay(&mut image, &payload.overlay)?;
-            apply_watermark(&mut image, &payload.watermark_png_base64)?;
-
+            let file_bytes = fs::read(&file.path).map_err(|error| error.to_string())?;
+            let format = image::guess_format(&file_bytes).map_err(|error| error.to_string())?;
+            
             let file_name = output_name(file, index, &payload.naming)?;
             let output_directory = payload
                 .output_directory
@@ -561,17 +560,47 @@ fn process_images(payload: ProcessPayload) -> Result<ProcessSummary, String> {
                 .unwrap_or_else(|| source_directory(file));
             fs::create_dir_all(&output_directory).map_err(|error| error.to_string())?;
             let output_path = output_directory.join(file_name);
-            let output_format = if payload.naming.output_format.eq_ignore_ascii_case("original") {
+            let output_format_str = if payload.naming.output_format.eq_ignore_ascii_case("original") {
                 file.extension.as_str()
             } else {
                 payload.naming.output_format.as_str()
             };
-            save_image(&image, output_format, &output_path)?;
+
+            // 特殊处理 GIF 动图分帧。
+            if format == ImageFormat::Gif && output_format_str == "gif" {
+                use image::AnimationDecoder;
+                let decoder = image::codecs::gif::GifDecoder::new(&file_bytes[..]).map_err(|e| e.to_string())?;
+                let frames = decoder.into_frames().collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?;
+                
+                if frames.len() > 1 {
+                    let out_file = fs::File::create(&output_path).map_err(|e| e.to_string())?;
+                    let mut encoder = image::codecs::gif::GifEncoder::new(out_file);
+                    
+                    for frame in frames {
+                        let delay = frame.delay();
+                        let buffer = frame.into_buffer();
+                        let dyn_img = DynamicImage::ImageRgba8(buffer);
+                        let processed = process_single_frame(dyn_img, &payload)?;
+                        let new_frame = image::Frame::from_parts(processed.to_rgba8(), 0, 0, delay);
+                        encoder.encode_frame(new_frame).map_err(|e| e.to_string())?;
+                    }
+                    
+                    return Ok(ProcessResultItem {
+                        output_path: output_path.to_string_lossy().to_string(),
+                        width: 0,
+                        height: 0,
+                    });
+                }
+            }
+
+            let image = image::load_from_memory_with_format(&file_bytes, format).map_err(|error| error.to_string())?;
+            let processed = process_single_frame(image, &payload)?;
+            save_image(&processed, output_format_str, &output_path)?;
 
             Ok(ProcessResultItem {
                 output_path: output_path.to_string_lossy().to_string(),
-                width: image.width(),
-                height: image.height(),
+                width: processed.width(),
+                height: processed.height(),
             })
         })();
 
@@ -605,4 +634,3 @@ fn main() {
         .run(tauri::generate_context!())
         .expect("error while running EZCut");
 }
-

@@ -1,4 +1,4 @@
-﻿{
+{
   "$schema": "https://schema.tauri.app/config/1",
   "build": {
     "beforeBuildCommand": "",
@@ -53,4 +53,3 @@
     ]
   }
 }
-
