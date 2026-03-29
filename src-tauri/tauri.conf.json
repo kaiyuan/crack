@@ -44,8 +44,8 @@
     "windows": [
       {
         "title": "EZCut",
-        "width": 640,
-        "height": 800,
+        "width": 764,
+        "height": 750,
         "minWidth": 640,
         "minHeight": 430,
         "resizable": true

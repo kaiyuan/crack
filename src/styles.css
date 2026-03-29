@@ -51,6 +51,7 @@ body {
   display: none;
 }
 
+
 button,
 input,
 select {
@@ -59,7 +60,8 @@ select {
 
 .window-shell {
   position: relative;
-  min-height: calc(100vh - 24px);
+  height: calc(100vh - 24px);
+  max-height: calc(100vh - 24px);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -70,6 +72,7 @@ select {
   backdrop-filter: blur(26px);
   -webkit-backdrop-filter: blur(26px);
   box-shadow: var(--shadow);
+  overflow: hidden;
 }
 
 .titlebar,
@@ -122,18 +125,20 @@ select {
 }
 
 .split-view {
-  min-height: 0;
   flex: 1;
   display: flex;
   gap: 10px;
-  align-items: flex-start;
+  align-items: stretch;
+  overflow: hidden;
 }
 
 .column {
-  min-height: 0;
+  height: 100%;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .left-column {
@@ -192,9 +197,9 @@ h2 {
 .preview-surface {
   width: 100%;
   aspect-ratio: 1 / 1;
-  min-height: 0;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   overflow: hidden;
   position: relative;
   border-radius: 4px;
@@ -484,8 +489,9 @@ input[type="color"] {
 }
 
 .drop-overlay {
-  position: absolute;
-  inset: 12px;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
   display: none;
   align-items: center;
   justify-content: center;
@@ -668,4 +674,34 @@ input[type="color"] {
 @keyframes slideIn {
   from { transform: translateY(20px) scale(0.98); opacity: 0; }
   to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+/* Custom Scrollbar */
+.column::-webkit-scrollbar,
+.settings-stack::-webkit-scrollbar,
+.image-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.column::-webkit-scrollbar-track,
+.settings-stack::-webkit-scrollbar-track,
+.image-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.column::-webkit-scrollbar-thumb,
+.settings-stack::-webkit-scrollbar-thumb,
+.image-list::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+}
+
+.column::-webkit-scrollbar-thumb:hover,
+.settings-stack::-webkit-scrollbar-thumb:hover,
+.image-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.preview-header {
+  justify-content: space-between;
 }
