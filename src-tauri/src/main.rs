@@ -335,11 +335,7 @@ fn process_single_frame(image: DynamicImage, payload: &ProcessPayload) -> Result
     let mut image = image;
 
     // 1. 裁剪。
-    if payload.crop.enabled {
-        let w = payload.crop.width.unwrap_or(image.width());
-        let h = payload.crop.height.unwrap_or(image.height());
-        image = image.crop_imm(payload.crop.x, payload.crop.y, w, h);
-    }
+    image = crop_image(image, &payload.crop);
 
     // 2. 缩放。
     if payload.resize.enabled {
