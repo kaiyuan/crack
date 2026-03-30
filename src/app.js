@@ -94,25 +94,21 @@ const canvasPoint=(event)=>{
 };
 
 const watermarkModel=(ctx,w,h,wm)=>{
-    if(!wm.enabled||!wm.text)return null;let x,y,fontSize=wm.fontSize;ctx.font=`600 ${fontSize}px sans-serif`;const measured=ctx.measureText(wm.text).width;
-    if(wm.x!==null && wm.y!==null){ x=wm.x; y=wm.y; }
-    else{
-        const a=p_pos(wm.position);
-        x=a.horizontal==='left'?wm.margin:a.horizontal==='right'?w-measured-wm.margin:(w-measured)/2;
-        y=a.vertical==='top'?wm.margin:a.vertical==='bottom'?h-fontSize-wm.margin:(h-fontSize)/2;
-    }
+    if(!wm.enabled||!wm.text)return null;
+    const fontSize=wm.fontSize; ctx.font=`600 ${fontSize}px sans-serif`;
+    const measured=ctx.measureText(wm.text).width;
+    const a=p_pos(wm.position);
+    const x=(wm.x!==null)?wm.x:(a.horizontal==='left'?wm.margin:a.horizontal==='right'?w-measured-wm.margin:(w-measured)/2);
+    const y=(wm.y!==null)?wm.y:(a.vertical==='top'?wm.margin:a.vertical==='bottom'?h-fontSize-wm.margin:(h-fontSize)/2);
     return{x,y,width:measured,height:fontSize,fontSize,text:wm.text,id:wm.id};
 };
 const overlayModel=(canvasW,canvasH,overlayImg,o)=>{
     if(!o.enabled||!overlayImg)return null;
-    let ox,oy,ow=Math.max(1,Math.round(canvasW*(o.scale_percent/100)));
-    let oh=Math.max(1,Math.round(overlayImg.naturalHeight*(ow/overlayImg.naturalWidth)));
-    if(o.x!==null && o.y!==null){ ox=o.x; oy=o.y; }
-    else{
-        const p=p_pos(o.position);
-        ox=p.horizontal==='left'?o.margin:p.horizontal==='right'?canvasW-ow-o.margin:Math.round((canvasW-ow)/2);
-        oy=p.vertical==='top'?o.margin:p.vertical==='bottom'?canvasH-oh-o.margin:Math.round((canvasH-oh)/2);
-    }
+    const ow=Math.max(1,Math.round(canvasW*(o.scale_percent/100)));
+    const oh=Math.max(1,Math.round(overlayImg.naturalHeight*(ow/overlayImg.naturalWidth)));
+    const p=p_pos(o.position);
+    const ox=(o.x!==null)?o.x:(p.horizontal==='left'?o.margin:p.horizontal==='right'?canvasW-ow-o.margin:Math.round((canvasW-ow)/2));
+    const oy=(o.y!==null)?o.y:(p.vertical==='top'?o.margin:p.vertical==='bottom'?canvasH-oh-o.margin:Math.round((canvasH-oh)/2));
     return{x:ox,y:oy,width:ow,height:oh,id:o.id};
 };
 
@@ -234,7 +230,9 @@ const renderFiles=()=>{
 
 async function buildWatermarkData(){
     const st=settings(); const wms=st.watermarks.filter(w=>w.enabled&&w.text); if(wms.length===0)return null;
-    const canvas=document.createElement('canvas');canvas.width=1600;canvas.height=1000;
+    const canvas=document.createElement('canvas');
+    canvas.width=s.previewImage?s.previewImage.naturalWidth:1600;
+    canvas.height=s.previewImage?s.previewImage.naturalHeight:1000;
     const ctx=canvas.getContext('2d');
     wms.forEach(wm=>{
         const c=rgb(wm.color); const model=watermarkModel(ctx,canvas.width,canvas.height,wm); if(!model)return;
