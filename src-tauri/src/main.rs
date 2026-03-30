@@ -92,6 +92,8 @@ struct NamingOptions {
     regex_pattern: String,
     regex_replacement: String,
     regex_flags: String,
+    start_number: u32,
+    step: u32,
 }
 
 #[derive(Clone, Deserialize)]
@@ -546,6 +548,9 @@ fn output_name(file: &ImageFile, index: usize, naming: &NamingOptions) -> Result
     }
 
     let timestamp = Local::now().format("%Y%m%d_%H%M%S").to_string();
+    let current_index = (index as u32 * naming.step) + naming.start_number;
+    let index_str = format!("{:02}", current_index);
+
     let output_ext = if naming.output_format.eq_ignore_ascii_case("original") {
         file.extension.clone()
     } else {
@@ -554,7 +559,7 @@ fn output_name(file: &ImageFile, index: usize, naming: &NamingOptions) -> Result
     let rendered = naming
         .template
         .replace("{name}", &base_name)
-        .replace("{index}", &format!("{:02}", index + 1))
+        .replace("{index}", &index_str)
         .replace("{ext}", &output_ext)
         .replace("{timestamp}", &timestamp)
         .replace("{width}", &file.width.to_string())
@@ -568,7 +573,7 @@ fn output_name(file: &ImageFile, index: usize, naming: &NamingOptions) -> Result
         .to_string();
 
     if safe.is_empty() {
-        return Ok(format!("export_{:02}.{}", index + 1, output_ext));
+        return Ok(format!("export_{}.{}", index_str, output_ext));
     }
 
     Ok(if safe.ends_with(&format!(".{}", output_ext)) {
