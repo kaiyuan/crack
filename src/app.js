@@ -220,7 +220,28 @@ const renderOverlayList=()=>{
     });
 };
 const clearImages=()=>{s.files=[];s.selectedId=null;s.previewCropRect=null;s.watermarks=[];s.overlays=[];renderFiles();renderWatermarkList();renderOverlayList();};
-const addWatermark=()=>{ s.watermarks.push({id:Date.now(),text:'Watermark',fontSize:40,opacity:0.5,color:'#2574ff',x:null,y:null,margin:20,position:'center-center',enabled:true,fontFamily:'sans-serif'}); renderWatermarkList(); schedule(0); };
+
+let isLoadingFonts=false;
+const loadFontsIfNeeded=async()=>{
+    if(s.fonts.length>0||isLoadingFonts||!invoke) return;
+    isLoadingFonts=true;
+    try {
+        const f = await cmd('get_system_fonts');
+        s.fonts = f || [];
+        renderWatermarkList();
+    } catch(err) {
+        console.error('Failed to load fonts:', err);
+    } finally {
+        isLoadingFonts=false;
+    }
+};
+
+const addWatermark=()=>{ 
+    s.watermarks.push({id:Date.now(),text:'Watermark',fontSize:40,opacity:0.5,color:'#2574ff',x:null,y:null,margin:20,position:'center-center',enabled:true,fontFamily:'sans-serif'}); 
+    renderWatermarkList(); 
+    schedule(0); 
+    loadFontsIfNeeded();
+};
 const addOverlay=async()=>{ try{const file=await cmd('pick_overlay');if(!file)return;s.overlays.push({id:Date.now(),path:file.path,name:file.name,scale_percent:25,opacity:0.8,x:null,y:null,margin:20,position:'center-center',enabled:true,width:file.width,height:file.height});renderOverlayList();schedule(0);}catch(err){console.error(err);}};
 const renderFiles=()=>{
     renderLeft();e.imageCount.textContent=String(s.files.length);e.imageList.innerHTML='';
@@ -287,12 +308,6 @@ async function init(){
         const info=invoke?await cmd('get_runtime_info'):null;
         if(info?.platform)s.platform=info.platform;
         if(info?.locale)s.locale=loc(info.locale);
-        if(invoke) {
-            cmd('get_system_fonts').then(f => {
-                s.fonts = f || [];
-                renderWatermarkList();
-            });
-        }
     }catch(_){}
     const stored=getStoredLocale();if(stored)s.locale=loc(stored);
     applyPlatform();applyLocale(s.locale);
