@@ -9,7 +9,7 @@
   },
   "package": {
     "productName": "EZCut",
-    "version": "0.1.0"
+    "version": "0.0.18"
   },
   "tauri": {
     "allowlist": {
@@ -44,7 +44,7 @@
     "windows": [
       {
         "title": "EZCut",
-        "width": 764,
+        "width": 724,
         "height": 750,
         "minWidth": 640,
         "minHeight": 430,

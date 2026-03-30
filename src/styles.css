@@ -281,7 +281,16 @@ h2 {
 .language-picker,
 input,
 select {
-  border-radius: 3px;
+  border-radius: 4px;
+}
+
+#image-count {
+  width: 30px;
+  height: 30px;
+}
+
+#pick-files-button {
+  border-radius: 4px;
 }
 
 .meta-strip,
