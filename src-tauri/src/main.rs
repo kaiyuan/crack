@@ -57,6 +57,19 @@ struct CropOptions {
 
 #[derive(Clone, Deserialize)]
 #[serde(rename_all = "snake_case")]
+struct WatermarkItem {
+    base64: String,
+    x: Option<i64>,
+    y: Option<i64>,
+    margin: u32,
+    position: String,
+    opacity: f32,
+    ref_width: u32,
+    ref_height: u32,
+}
+
+#[derive(Clone, Deserialize)]
+#[serde(rename_all = "snake_case")]
 struct OverlayOptions {
     enabled: bool,
     path: Option<String>,
@@ -66,6 +79,8 @@ struct OverlayOptions {
     position: String,
     x: Option<i64>,
     y: Option<i64>,
+    ref_width: u32,
+    ref_height: u32,
 }
 
 #[derive(Clone, Deserialize)]
@@ -86,9 +101,9 @@ struct ProcessPayload {
     output_directory: Option<String>,
     resize: ResizeOptions,
     crop: CropOptions,
+    watermarks: Vec<WatermarkItem>,
     overlays: Vec<OverlayOptions>,
     naming: NamingOptions,
-    watermark_png_base64: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -334,8 +349,8 @@ fn process_single_frame(image: DynamicImage, payload: &ProcessPayload) -> Result
         apply_overlay(&mut image, overlay)?;
     }
 
-    // 4. 应用整体水印。
-    apply_watermark(&mut image, &payload.watermark_png_base64)?;
+    // 4. 应用独立水印层。
+    apply_watermark(&mut image, &payload.watermarks)?;
 
     Ok(image)
 }
@@ -384,17 +399,18 @@ fn overlay_position(
     top_width: u32,
     top_height: u32,
     position: &str,
-    margin: u32,
+    margin_x: u32,
+    margin_y: u32,
 ) -> (i64, i64) {
     let (vertical, horizontal) = position.split_once('-').unwrap_or(("center", "center"));
     let left = match horizontal {
-        "left" => margin as i64,
-        "right" => base_width.saturating_sub(top_width + margin) as i64,
+        "left" => margin_x as i64,
+        "right" => base_width.saturating_sub(top_width + margin_x) as i64,
         _ => (base_width.saturating_sub(top_width) / 2) as i64,
     };
     let top = match vertical {
-        "top" => margin as i64,
-        "bottom" => base_height.saturating_sub(top_height + margin) as i64,
+        "top" => margin_y as i64,
+        "bottom" => base_height.saturating_sub(top_height + margin_y) as i64,
         _ => (base_height.saturating_sub(top_height) / 2) as i64,
     };
     (left.max(0), top.max(0))
@@ -418,7 +434,12 @@ fn apply_overlay(base: &mut DynamicImage, overlay: &OverlayOptions) -> Result<()
 
     let base_width = base.width();
     let base_height = base.height();
+    let scale_factor_x = base_width as f32 / overlay.ref_width as f32;
+    let scale_factor_y = base_height as f32 / overlay.ref_height as f32;
+
     let mut top = image::open(path).map_err(|error| error.to_string())?.to_rgba8();
+    
+    // 比例缩放 Overlay 本身的大小 (统一以宽度为基准)。
     let target_width =
         ((base_width as f32) * (overlay.scale_percent.max(1) as f32 / 100.0)).round() as u32;
     let safe_target_width = target_width.max(1);
@@ -437,9 +458,13 @@ fn apply_overlay(base: &mut DynamicImage, overlay: &OverlayOptions) -> Result<()
     );
     apply_alpha(&mut top, overlay.opacity);
 
+    // 缩放 Margin 与坐标。
+    let scaled_margin_x = (overlay.margin as f32 * scale_factor_x).round() as u32;
+    let scaled_margin_y = (overlay.margin as f32 * scale_factor_y).round() as u32;
+
     // 优先使用强制坐标 (x, y)，否则使用九宫格对齐逻辑。
     let (left, top_pos) = if let (Some(x), Some(y)) = (overlay.x, overlay.y) {
-        (x, y)
+        ((x as f32 * scale_factor_x).round() as i64, (y as f32 * scale_factor_y).round() as i64)
     } else {
         overlay_position(
             base_width,
@@ -447,7 +472,8 @@ fn apply_overlay(base: &mut DynamicImage, overlay: &OverlayOptions) -> Result<()
             top.width(),
             top.height(),
             &overlay.position,
-            overlay.margin,
+            scaled_margin_x,
+            scaled_margin_y,
         )
     };
 
@@ -455,20 +481,49 @@ fn apply_overlay(base: &mut DynamicImage, overlay: &OverlayOptions) -> Result<()
     Ok(())
 }
 
-fn apply_watermark(base: &mut DynamicImage, watermark_png_base64: &Option<String>) -> Result<(), String> {
-    let Some(encoded) = watermark_png_base64 else {
-        return Ok(());
-    };
+fn apply_watermark(base: &mut DynamicImage, watermarks: &[WatermarkItem]) -> Result<(), String> {
+    let base_width = base.width();
+    let base_height = base.height();
 
-    let decoded = BASE64_STANDARD
-        .decode(encoded)
-        .map_err(|error| error.to_string())?;
-    let overlay = image::load_from_memory_with_format(&decoded, ImageFormat::Png)
-        .map_err(|error| error.to_string())?
-        .resize(base.width(), base.height(), FilterType::Lanczos3)
-        .to_rgba8();
+    for wm in watermarks {
+        let scale_factor_x = base_width as f32 / wm.ref_width as f32;
+        let scale_factor_y = base_height as f32 / wm.ref_height as f32;
+        let decoded = BASE64_STANDARD
+            .decode(&wm.base64)
+            .map_err(|error| error.to_string())?;
+        
+        let img = image::load_from_memory_with_format(&decoded, ImageFormat::Png)
+            .map_err(|error| error.to_string())?;
 
-    imageops::overlay(base, &DynamicImage::ImageRgba8(overlay), 0, 0);
+        // 缩放水印图片本身的大小 (统一以宽度为基准)。
+        let target_w = (img.width() as f32 * scale_factor_x).round() as u32;
+        let target_h = (img.height() as f32 * scale_factor_x).round() as u32;
+        
+        if target_w == 0 || target_h == 0 { continue; }
+        
+        let mut rgba = img.resize(target_w, target_h, FilterType::Lanczos3).to_rgba8();
+        apply_alpha(&mut rgba, wm.opacity);
+
+        // 缩放边距与坐标。
+        let scaled_margin_x = (wm.margin as f32 * scale_factor_x).round() as u32;
+        let scaled_margin_y = (wm.margin as f32 * scale_factor_y).round() as u32;
+
+        let (left, top_pos) = if let (Some(x), Some(y)) = (wm.x, wm.y) {
+            ((x as f32 * scale_factor_x).round() as i64, (y as f32 * scale_factor_y).round() as i64)
+        } else {
+            overlay_position(
+                base_width,
+                base_height,
+                rgba.width(),
+                rgba.height(),
+                &wm.position,
+                scaled_margin_x,
+                scaled_margin_y,
+            )
+        };
+
+        imageops::overlay(base, &DynamicImage::ImageRgba8(rgba), left, top_pos);
+    }
     Ok(())
 }
 
@@ -592,12 +647,26 @@ fn process_images(payload: ProcessPayload) -> Result<ProcessSummary, String> {
                 .map(PathBuf::from)
                 .unwrap_or_else(|| source_directory(file));
             fs::create_dir_all(&output_directory).map_err(|error| error.to_string())?;
-            let output_path = output_directory.join(file_name);
+            let mut output_path = output_directory.join(&file_name);
             let output_format_str = if payload.naming.output_format.eq_ignore_ascii_case("original") {
                 file.extension.as_str()
             } else {
                 payload.naming.output_format.as_str()
             };
+
+            // 防覆盖重命名逻辑：检测文件是否存在，如果存在则添加 (1), (2) 直到找到可用名字。
+            let mut counter = 1;
+            while output_path.exists() {
+                let stem = Path::new(&file_name).file_stem().and_then(|s| s.to_str()).unwrap_or("");
+                let ext = Path::new(&file_name).extension().and_then(|e| e.to_str()).unwrap_or("");
+                let new_name = if ext.is_empty() {
+                    format!("{} ({})", stem, counter)
+                } else {
+                    format!("{} ({}).{}", stem, counter, ext)
+                };
+                output_path = output_directory.join(new_name);
+                counter += 1;
+            }
 
             // 特殊处理 GIF 动图分帧。
             if format == ImageFormat::Gif && output_format_str == "gif" {

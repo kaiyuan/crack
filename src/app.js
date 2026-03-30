@@ -54,7 +54,9 @@ const settings=()=>({
         scale_percent: Math.round(num(`ov-scale-${i}`)||25),
         opacity: num(`ov-opacity-${i}`)||0.75,
         margin: Math.round(num(`ov-margin-${i}`)||20),
-        position: val(`ov-pos-${i}`)
+        position: val(`ov-pos-${i}`),
+        ref_width: o.ref_width || 1920,
+        ref_height: o.ref_height || 1080
     })),
     watermarks: s.watermarks.map((w,i)=>({...w,
         enabled: chk(`wm-enabled-${i}`),
@@ -66,7 +68,9 @@ const settings=()=>({
         x: num(`wm-x-${i}`)!==null?Math.round(num(`wm-x-${i}`)):null,
         y: num(`wm-y-${i}`)!==null?Math.round(num(`wm-y-${i}`)):null,
         margin: Math.round(num(`wm-margin-${i}`)||20),
-        position: val(`wm-pos-${i}`)
+        position: val(`wm-pos-${i}`),
+        ref_width: w.ref_width || 1920,
+        ref_height: w.ref_height || 1080
     }))
 });
 
@@ -96,23 +100,44 @@ const canvasPoint=(event)=>{
 
 const watermarkModel=(ctx,w,h,wm)=>{
     if(!wm.enabled||!wm.text)return null;
-    const fontSize=wm.fontSize; 
-    const font=wm.fontFamily||'sans-serif';
-    ctx.font=`600 ${fontSize}px "${font}", sans-serif`;
-    const measured=ctx.measureText(wm.text).width;
-    const a=p_pos(wm.position);
-    const x=(wm.x!==null)?wm.x:(a.horizontal==='left'?wm.margin:a.horizontal==='right'?w-measured-wm.margin:(w-measured)/2);
-    const y=(wm.y!==null)?wm.y:(a.vertical==='top'?wm.margin:a.vertical==='bottom'?h-fontSize-wm.margin:(h-fontSize)/2);
-    return{x,y,width:measured,height:fontSize,fontSize,text:wm.text,id:wm.id,font};
+    const refW = wm.ref_width || w;
+    const refH = wm.ref_height || h;
+    const scaleX = w / refW;
+    const scaleY = h / refH;
+
+    const fontSize = wm.fontSize * scaleX; 
+    const font = wm.fontFamily || 'sans-serif';
+    ctx.font = `600 ${fontSize}px "${font}", sans-serif`;
+    const measured = ctx.measureText(wm.text).width;
+    const a = p_pos(wm.position);
+    
+    // 缩放边距与坐标。
+    const marginX = wm.margin * scaleX;
+    const marginY = wm.margin * scaleY;
+    
+    const x = (wm.x !== null) ? (wm.x * scaleX) : (a.horizontal === 'left' ? marginX : a.horizontal === 'right' ? w - measured - marginX : (w - measured) / 2);
+    const y = (wm.y !== null) ? (wm.y * scaleY) : (a.vertical === 'top' ? marginY : a.vertical === 'bottom' ? h - fontSize - marginY : (h - fontSize) / 2);
+    
+    return { x, y, width: measured, height: fontSize, fontSize, text: wm.text, id: wm.id, font };
 };
 const overlayModel=(canvasW,canvasH,overlayImg,o)=>{
     if(!o.enabled||!overlayImg)return null;
-    const ow=Math.max(1,Math.round(canvasW*(o.scale_percent/100)));
-    const oh=Math.max(1,Math.round(overlayImg.naturalHeight*(ow/overlayImg.naturalWidth)));
-    const p=p_pos(o.position);
-    const ox=(o.x!==null)?o.x:(p.horizontal==='left'?o.margin:p.horizontal==='right'?canvasW-ow-o.margin:Math.round((canvasW-ow)/2));
-    const oy=(o.y!==null)?o.y:(p.vertical==='top'?o.margin:p.vertical==='bottom'?canvasH-oh-o.margin:Math.round((canvasH-oh)/2));
-    return{x:ox,y:oy,width:ow,height:oh,id:o.id};
+    const refW = o.ref_width || canvasW;
+    const refH = o.ref_height || canvasH;
+    const scaleX = canvasW / refW;
+    const scaleY = canvasH / refH;
+
+    const ow = Math.max(1, Math.round(canvasW * (o.scale_percent / 100)));
+    const oh = Math.max(1, Math.round(overlayImg.naturalHeight * (ow / overlayImg.naturalWidth)));
+    const p = p_pos(o.position);
+    
+    const marginX = o.margin * scaleX;
+    const marginY = o.margin * scaleY;
+
+    const ox = (o.x !== null) ? (o.x * scaleX) : (p.horizontal === 'left' ? marginX : p.horizontal === 'right' ? canvasW - ow - marginX : Math.round((canvasW - ow) / 2));
+    const oy = (o.y !== null) ? (o.y * scaleY) : (p.vertical === 'top' ? marginY : p.vertical === 'bottom' ? canvasH - oh - marginY : Math.round((canvasH - oh) / 2));
+    
+    return { x: ox, y: oy, width: ow, height: oh, id: o.id };
 };
 
 const drawHandles=(ctx,r,color)=>{
@@ -204,7 +229,26 @@ const renderWatermarkList=()=>{
         item.innerHTML=`<div class="layer-item-header"><span>${tt('textWatermark')} #${i+1}</span><button class="remove-layer-btn" data-type="wm" data-id="${wm.id}">×</button></div><div class="layer-body"><label class="switch"><input id="wm-enabled-${i}" type="checkbox" ${wm.enabled?'checked':''} /><span>${tt('enableThis')}</span></label><input id="wm-text-${i}" type="text" value="${wm.text}" placeholder="${tt('placeholderWatermark')}" /><label><span>${tt('fontFamily')}</span><select id="wm-font-${i}"><option value="sans-serif">Default</option>${fontOpts}</select></label><div class="grid two"><label><span>${tt('layerX')}</span><input id="wm-x-${i}" type="number" value="${wm.x??''}" /></label><label><span>${tt('layerY')}</span><input id="wm-y-${i}" type="number" value="${wm.y??''}" /></label></div><div class="grid three"><label><span>${tt('size')}</span><input id="wm-size-${i}" type="number" value="${wm.fontSize}" /></label><label><span>${tt('opacity')}</span><input id="wm-opacity-${i}" type="number" step="0.05" value="${wm.opacity}" /></label><label><span>${tt('color')}</span><input id="wm-color-${i}" type="color" value="${wm.color}" /></label></div><div class="grid two"><label><span>${tt('margin')}</span><input id="wm-margin-${i}" type="number" value="${wm.margin}" /></label><label><span>${tt('position')}</span><select id="wm-pos-${i}"><option value="top-left" ${wm.position==='top-left'?'selected':''}>${tt('topLeft')}</option><option value="top-center" ${wm.position==='top-center'?'selected':''}>${tt('topCenter')}</option><option value="top-right" ${wm.position==='top-right'?'selected':''}>${tt('topRight')}</option><option value="center-center" ${wm.position==='center-center'?'selected':''}>${tt('center')}</option><option value="bottom-left" ${wm.position==='bottom-left'?'selected':''}>${tt('bottomLeft')}</option><option value="bottom-center" ${wm.position==='bottom-center'?'selected':''}>${tt('bottomCenter')}</option><option value="bottom-right" ${wm.position==='bottom-right'?'selected':''}>${tt('bottomRight')}</option></select></label></div></div>`;
         e.watermarkList.appendChild(item);
         ['wm-enabled-','wm-text-','wm-font-','wm-size-','wm-opacity-','wm-color-','wm-x-','wm-y-','wm-margin-','wm-pos-'].forEach(p=>{
-            document.getElementById(p+i).addEventListener('input',(ev)=>{ if(!p.includes('opacity')&&!p.includes('color')) { wm.x=null; wm.y=null; if(document.getElementById(`wm-x-${i}`)) document.getElementById(`wm-x-${i}`).value=''; if(document.getElementById(`wm-y-${i}`)) document.getElementById(`wm-y-${i}`).value=''; } schedule(0); });
+            document.getElementById(p+i).addEventListener('input', (ev)=>{
+                const el = ev.target;
+                if(p === 'wm-enabled-') wm.enabled = el.checked;
+                else if(p === 'wm-text-') wm.text = el.value;
+                else if(p === 'wm-font-') wm.fontFamily = el.value;
+                else if(p === 'wm-size-') wm.fontSize = Number(el.value);
+                else if(p === 'wm-opacity-') wm.opacity = Number(el.value);
+                else if(p === 'wm-color-') wm.color = el.value;
+                else if(p === 'wm-margin-') wm.margin = Number(el.value);
+                else if(p === 'wm-pos-') wm.position = el.value;
+                else if(p === 'wm-y-') wm.y = el.value === '' ? null : Number(el.value);
+                
+                const f = sel();
+                if(f) {
+                    wm.ref_width = f.width;
+                    wm.ref_height = f.height;
+                }
+
+                schedule(0);
+            });
         });
     });
 };
@@ -212,10 +256,27 @@ const renderOverlayList=()=>{
     e.overlayList.innerHTML='';
     s.overlays.forEach((ov,i)=>{
         const item=document.createElement('div'); item.className='layer-item';
-        item.innerHTML=`<div class="layer-item-header"><span>${ov.name}</span><button class="remove-layer-btn" data-type="ov" data-id="${ov.id}">×</button></div><div class="layer-body"><label class="switch"><input id="ov-enabled-${i}" type="checkbox" ${ov.enabled?'checked':''} /><span>${tt('enableThis')}</span></label><div class="grid two"><label><span>${tt('layerX')}</span><input id="ov-x-${i}" type="number" value="${ov.x??''}" /></label><label><span>${tt('layerY')}</span><input id="ov-y-${i}" type="number" value="${ov.y??''}" /></label></div><div class="grid three"><label><span>${tt('scalePercent')}</span><input id="ov-scale-${i}" type="number" value="${ov.scale}" /></label><label><span>${tt('opacity')}</span><input id="ov-opacity-${i}" type="number" step="0.05" value="${ov.opacity}" /></label><label><span>${tt('margin')}</span><input id="ov-margin-${i}" type="number" value="${ov.margin}" /></label></div><label><span>${tt('position')}</span><select id="ov-pos-${i}"><option value="top-left" ${ov.position==='top-left'?'selected':''}>${tt('topLeft')}</option><option value="top-center" ${ov.position==='top-center'?'selected':''}>${tt('topCenter')}</option><option value="top-right" ${ov.position==='top-right'?'selected':''}>${tt('topRight')}</option><option value="center-center" ${ov.position==='center-center'?'selected':''}>${tt('center')}</option><option value="bottom-left" ${ov.position==='bottom-left'?'selected':''}>${tt('bottomLeft')}</option><option value="bottom-center" ${ov.position==='bottom-center'?'selected':''}>${tt('bottomCenter')}</option><option value="bottom-right" ${ov.position==='bottom-right'?'selected':''}>${tt('bottomRight')}</option></select></label></div></div>`;
+        item.innerHTML=`<div class="layer-item-header"><span>${ov.name}</span><button class="remove-layer-btn" data-type="ov" data-id="${ov.id}">×</button></div><div class="layer-body"><label class="switch"><input id="ov-enabled-${i}" type="checkbox" ${ov.enabled?'checked':''} /><span>${tt('enableThis')}</span></label><div class="grid two"><label><span>${tt('layerX')}</span><input id="ov-x-${i}" type="number" value="${ov.x??''}" /></label><label><span>${tt('layerY')}</span><input id="ov-y-${i}" type="number" value="${ov.y??''}" /></label></div><div class="grid three"><label><span>${tt('scalePercent')}</span><input id="ov-scale-${i}" type="number" value="${ov.scale_percent}" /></label><label><span>${tt('opacity')}</span><input id="ov-opacity-${i}" type="number" step="0.05" value="${ov.opacity}" /></label><label><span>${tt('margin')}</span><input id="ov-margin-${i}" type="number" value="${ov.margin}" /></label></div><label><span>${tt('position')}</span><select id="ov-pos-${i}"><option value="top-left" ${ov.position==='top-left'?'selected':''}>${tt('topLeft')}</option><option value="top-center" ${ov.position==='top-center'?'selected':''}>${tt('topCenter')}</option><option value="top-right" ${ov.position==='top-right'?'selected':''}>${tt('topRight')}</option><option value="center-center" ${ov.position==='center-center'?'selected':''}>${tt('center')}</option><option value="bottom-left" ${ov.position==='bottom-left'?'selected':''}>${tt('bottomLeft')}</option><option value="bottom-center" ${ov.position==='bottom-center'?'selected':''}>${tt('bottomCenter')}</option><option value="bottom-right" ${ov.position==='bottom-right'?'selected':''}>${tt('bottomRight')}</option></select></label></div></div>`;
         e.overlayList.appendChild(item);
         ['ov-enabled-','ov-x-','ov-y-','ov-scale-','ov-opacity-','ov-margin-','ov-pos-'].forEach(p=>{
-            document.getElementById(p+i).addEventListener('input',(ev)=>{ if(!p.includes('opacity')) { ov.x=null; ov.y=null; if(document.getElementById(`ov-x-${i}`)) document.getElementById(`ov-x-${i}`).value=''; if(document.getElementById(`ov-y-${i}`)) document.getElementById(`ov-y-${i}`).value=''; } schedule(0); });
+            document.getElementById(p+i).addEventListener('input',(ev)=>{
+                const el = ev.target;
+                if(p === 'ov-enabled-') ov.enabled = el.checked;
+                else if(p === 'ov-scale-') ov.scale_percent = Number(el.value);
+                else if(p === 'ov-opacity-') ov.opacity = Number(el.value);
+                else if(p === 'ov-margin-') ov.margin = Number(el.value);
+                else if(p === 'ov-pos-') ov.position = el.value;
+                else if(p === 'ov-x-') ov.x = el.value === '' ? null : Number(el.value);
+                else if(p === 'ov-y-') ov.y = el.value === '' ? null : Number(el.value);
+
+                const f = sel();
+                if(f) {
+                    ov.ref_width = f.width;
+                    ov.ref_height = f.height;
+                }
+
+                schedule(0);
+            });
         });
     });
 };
@@ -237,12 +298,13 @@ const loadFontsIfNeeded=async()=>{
 };
 
 const addWatermark=()=>{ 
-    s.watermarks.push({id:Date.now(),text:'Watermark',fontSize:40,opacity:0.5,color:'#2574ff',x:null,y:null,margin:20,position:'center-center',enabled:true,fontFamily:'sans-serif'}); 
+    const f=sel();
+    s.watermarks.push({id:Date.now(),text:'EZCut',fontSize:40,opacity:0.5,color:'#2574ff',x:null,y:null,margin:20,position:'center-center',enabled:true,fontFamily:'sans-serif',ref_width:f?f.width:1920,ref_height:f?f.height:1080}); 
     renderWatermarkList(); 
     schedule(0); 
     loadFontsIfNeeded();
 };
-const addOverlay=async()=>{ try{const file=await cmd('pick_overlay');if(!file)return;s.overlays.push({id:Date.now(),path:file.path,name:file.name,scale_percent:25,opacity:0.8,x:null,y:null,margin:20,position:'center-center',enabled:true,width:file.width,height:file.height});renderOverlayList();schedule(0);}catch(err){console.error(err);}};
+const addOverlay=async()=>{ try{const file=await cmd('pick_overlay');if(!file)return;const f=sel();s.overlays.push({id:Date.now(),path:file.path,name:file.name,scale_percent:25,opacity:0.8,x:null,y:null,margin:20,position:'center-center',enabled:true,width:file.width,height:file.height,ref_width:f?f.width:1920,ref_height:f?f.height:1080});renderOverlayList();schedule(0);}catch(err){console.error(err);}};
 const renderFiles=()=>{
     renderLeft();e.imageCount.textContent=String(s.files.length);e.imageList.innerHTML='';
     if(s.files.length===0){s.selectedId=null;e.imageList.classList.add('empty-state');e.imageList.innerHTML=`<p>${tt('noImagesYet')}</p>`;schedule(10);return;}
@@ -256,28 +318,56 @@ const renderFiles=()=>{
 };
 
 async function buildWatermarkData(){
-    const st=settings(); const wms=st.watermarks.filter(w=>w.enabled&&w.text); if(wms.length===0)return null;
-    const canvas=document.createElement('canvas');
-    canvas.width=s.previewImage?s.previewImage.naturalWidth:1600;
-    canvas.height=s.previewImage?s.previewImage.naturalHeight:1000;
-    const ctx=canvas.getContext('2d');
-    wms.forEach(wm=>{
-        const c=rgb(wm.color); const model=watermarkModel(ctx,canvas.width,canvas.height,wm); if(!model)return;
-        ctx.save(); ctx.font=`600 ${model.fontSize}px "${model.font}", sans-serif`; ctx.textAlign='left'; ctx.textBaseline='top';
-        ctx.fillStyle=`rgba(${c.r}, ${c.g}, ${c.b}, ${wm.opacity})`; ctx.fillText(model.text,model.x,model.y); ctx.restore();
-    });
-    return canvas.toDataURL('image/png').replace(/^data:image\/png;base64,/,'');
+    const st=settings(); const wms=st.watermarks.filter(w=>w.enabled&&w.text); if(wms.length===0)return [];
+    const results = [];
+    const dummyCanvas = document.createElement('canvas');
+    const dummyCtx = dummyCanvas.getContext('2d');
+    const refImg = sel();
+    const refW = refImg ? refImg.width : 1600;
+    const refH = refImg ? refImg.height : 1000;
+
+    for (const wm of wms) {
+        const font = wm.fontFamily || 'sans-serif';
+        const fontSize = wm.fontSize;
+        dummyCtx.font = `600 ${fontSize}px "${font}", sans-serif`;
+        const metrics = dummyCtx.measureText(wm.text);
+        const textWidth = Math.ceil(metrics.width);
+        const textHeight = Math.ceil(fontSize * 1.2); // 估算行高
+
+        const canvas = document.createElement('canvas');
+        canvas.width = textWidth;
+        canvas.height = textHeight;
+        const ctx = canvas.getContext('2d');
+        const c = rgb(wm.color);
+        ctx.font = `600 ${fontSize}px "${font}", sans-serif`;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = `rgba(${c.r}, ${c.g}, ${c.b}, 1.0)`; // 透明度在后端处理，这里导出不透明或全透明
+        ctx.fillText(wm.text, 0, 0);
+
+        results.push({
+            base64: canvas.toDataURL('image/png').replace(/^data:image\/png;base64,/,''),
+            x: wm.x,
+            y: wm.y,
+            margin: wm.margin,
+            position: wm.position,
+            opacity: wm.opacity,
+            ref_width: wm.ref_width,
+            ref_height: wm.ref_height
+        });
+    }
+    return results;
 }
 
 async function pickFiles(){try{if(invoke){mergeFiles(await cmd('pick_files'));}else e.fileInput.click();}catch(error){setStatus(tt('processingFailed',{error:String(error)}),'error');}}
 async function pickOverlay(){try{const file=await cmd('pick_overlay');if(!file)return;s.overlayFile=file;renderOverlayFile();setStatus(tt('overlaySelected'),'success');}catch(error){setStatus(tt('processingFailed',{error:String(error)}),'error');}}
 async function pickOutputDirectory(){try{const directory=await cmd('pick_output_directory',{current_dir:s.outputDirectory||null});if(!directory)return;s.outputDirectory=directory;e.outputDirectory.textContent=tt('customSaveFolder',{path:directory});setStatus(tt('customSaveFolderUpdated'),'success');}catch(error){setStatus(tt('processingFailed',{error:String(error)}),'error');}}
 
-const getPayload=(watermark_png_base64)=>({
+const getPayload=(watermarks)=>({
     files:s.files,output_directory:s.outputDirectory||null,
     resize:settings().resize,crop:settings().crop,
     naming:{template:val('output-template')||'{name}_edit',output_format:val('output-format'),regex_enabled:chk('regex-enabled'),regex_pattern:val('regex-pattern'),regex_replacement:val('regex-replacement'),regex_flags:val('regex-flags')},
-    watermark_png_base64,
+    watermarks,
     overlays:settings().overlays.map(o=>({...o, path:o.path}))
 });
 
