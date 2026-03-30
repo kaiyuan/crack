@@ -12,6 +12,16 @@ use std::io::Cursor;
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 use tauri::api::dialog::blocking::FileDialogBuilder;
+use font_kit::source::SystemSource;
+
+#[tauri::command]
+fn get_system_fonts() -> Vec<String> {
+    let source = SystemSource::new();
+    let mut names: Vec<String> = source.all_families().unwrap_or_default();
+    names.sort_by(|a, b| a.to_lowercase().cmp(&b.to_lowercase()));
+    names.dedup();
+    names
+}
 
 // 前端用于展示与导出的文件元信息。
 #[derive(Clone, Serialize, Deserialize)]
@@ -652,7 +662,8 @@ fn main() {
             load_files_from_paths,
             pick_overlay,
             pick_output_directory,
-            process_images
+            process_images,
+            get_system_fonts
         ])
         .run(tauri::generate_context!())
         .expect("error while running EZCut");

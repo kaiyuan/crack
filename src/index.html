@@ -84,7 +84,7 @@
               </summary>
               <div class="group-body">
                 <label class="switch">
-                  <input id="resize-enabled" type="checkbox" checked />
+                  <input id="resize-enabled" type="checkbox" />
                   <span data-i18n="enableThis">Enable this section</span>
                 </label>
                 <div class="grid two">
@@ -173,15 +173,6 @@
                   <span data-i18n="template">Template</span>
                   <input id="output-template" type="text" value="{name}_edit" />
                 </label>
-                <label>
-                  <span data-i18n="exportCategory">Export Category</span>
-                  <select id="output-format">
-                    <option value="original" selected data-i18n="keepOriginal">Keep original</option>
-                    <option value="png">PNG</option>
-                    <option value="jpg">JPG</option>
-                    <option value="webp">WEBP</option>
-                  </select>
-                </label>
                 <label class="switch">
                   <input id="regex-enabled" type="checkbox" />
                   <span data-i18n="useRegexRename">Use regex rename</span>
@@ -209,6 +200,15 @@
                 <span data-i18n="export">Export</span>
               </summary>
               <div class="group-body">
+                <label>
+                  <span data-i18n="exportCategory">Export Category</span>
+                  <select id="output-format">
+                    <option value="original" selected data-i18n="keepOriginal">Keep original</option>
+                    <option value="png">PNG</option>
+                    <option value="jpg">JPG</option>
+                    <option value="webp">WEBP</option>
+                  </select>
+                </label>
                 <div class="inline-row export-row">
                   <button id="pick-output-button" class="secondary-button" type="button"
                     data-i18n="chooseSaveFolder">Choose Save Folder</button>
