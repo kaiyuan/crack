@@ -250,8 +250,6 @@ h3 {
 .hero-shot,
 .preview-image {
   width: 100%;
-  border-radius: 18px;
-  box-shadow: 0 16px 36px rgba(16, 28, 45, 0.12);
 }
 
 .section-heading {

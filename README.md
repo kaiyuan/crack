@@ -1,7 +1,9 @@
 ﻿# EZCut
 ![EZCut Icon](https://github.com/Kaiyuan/ezcut/blob/main/src-tauri/icons/icon.png)
 
-`EZCut` is a lightweight desktop image editing tool for Windows 10+ and macOS.
+`EZCut` is a lightweight desktop image editing tool for Windows 10+ (64-bit) and macOS 10.15+ .
+
+![EZCut Screenshot](https://kaiyuan.github.io/ezcut/assets/EZCut-ui.png)
 
 Repository:
 
