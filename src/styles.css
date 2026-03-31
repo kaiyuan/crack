@@ -43,10 +43,6 @@ body {
     linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
 }
 
-body {
-  padding: 12px;
-}
-
 .traffic-lights {
   display: none;
 }
@@ -60,14 +56,12 @@ select {
 
 .window-shell {
   position: relative;
-  height: calc(100vh - 24px);
-  max-height: calc(100vh - 24px);
+  height: 100vh;
+  max-height: 100vh;
   display: flex;
   flex-direction: column;
   gap: 10px;
   padding: 12px;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.72);
   background: var(--chrome);
   backdrop-filter: blur(26px);
   -webkit-backdrop-filter: blur(26px);
