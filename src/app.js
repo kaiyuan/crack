@@ -367,7 +367,7 @@ const getPayload=(watermarks)=>({
     files:s.files,output_directory:s.outputDirectory||null,
     resize:settings().resize,crop:settings().crop,
     naming:{
-        template:val('output-template')||'{name}_edit',
+        template:val('output-template')||'{name}_{timestamp}',
         output_format:val('output-format'),
         regex_enabled:chk('regex-enabled'),
         regex_pattern:val('regex-pattern'),
@@ -402,14 +402,30 @@ const getStoredLocale=()=>{try{return localStorage.getItem('ezcut-locale');}catc
 const applyLocale=(l)=>{s.locale=loc(l);e.languagePicker.value=s.locale;applyTranslations();renderFiles();renderOverlayFile();setStatus(tt('ready'));};
 
 async function init(){
-    s.locale=loc(navigator.language);
+    // 启动优化：优先使用本地可得信息完成首屏渲染，后台再补充运行时平台/语言。
+    const stored=getStoredLocale();
+    s.locale=loc(stored||navigator.language);
+    applyPlatform();
+    applyLocale(s.locale);
+
+    if(!invoke) return;
     try{
-        const info=invoke?await cmd('get_runtime_info'):null;
-        if(info?.platform)s.platform=info.platform;
-        if(info?.locale)s.locale=loc(info.locale);
+        const info=await cmd('get_runtime_info');
+        let changed=false;
+        if(info?.platform && info.platform!==s.platform){
+            s.platform=info.platform;
+            changed=true;
+        }
+        // 用户手动选过语言时，以本地存储为准；否则再用系统 locale 覆盖。
+        if(!stored && info?.locale){
+            const normalized=loc(info.locale);
+            if(normalized!==s.locale){
+                s.locale=normalized;
+                applyLocale(s.locale);
+            }
+        }
+        if(changed) applyPlatform();
     }catch(_){}
-    const stored=getStoredLocale();if(stored)s.locale=loc(stored);
-    applyPlatform();applyLocale(s.locale);
 }
 
 const getVisualSize=()=>{

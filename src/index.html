@@ -171,7 +171,7 @@
               <div class="group-body">
                 <label>
                   <span data-i18n="template">Template</span>
-                  <input id="output-template" type="text" value="{name}_edit" />
+                  <input id="output-template" type="text" value="{name}_{timestamp}" />
                 </label>
                 <label class="switch">
                   <input id="regex-enabled" type="checkbox" />
@@ -271,7 +271,17 @@
     </div>
   </div>
 
-  <script src="./app.js"></script>
+  <script>
+    // 启动优化：先让首屏完成绘制，再异步加载主逻辑脚本，避免窗口打开后白屏等待。
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        const script = document.createElement('script');
+        script.src = './app.js';
+        script.async = true;
+        document.body.appendChild(script);
+      }, 0);
+    });
+  </script>
 </body>
 
 </html>

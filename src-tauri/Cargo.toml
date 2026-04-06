@@ -19,6 +19,7 @@ serde_json = "1.0"
 sys-locale = "0.3"
 font-kit = "0.14"
 tauri = { version = "1.5", features = ["dialog-all", "fs-all", "path-all", "shell-open"] }
+rayon = "1.11.0"
 
 [features]
 default = ["custom-protocol"]

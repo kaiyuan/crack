@@ -898,6 +898,7 @@ dependencies = [
  "chrono",
  "font-kit",
  "image 0.25.10",
+ "rayon",
  "regex",
  "serde",
  "serde_json",
