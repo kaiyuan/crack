@@ -7,10 +7,12 @@ use image::imageops::{self, FilterType};
 use image::{DynamicImage, ImageFormat, RgbaImage};
 use regex::RegexBuilder;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
+use std::sync::OnceLock;
 use std::time::UNIX_EPOCH;
 use tauri::api::dialog::blocking::FileDialogBuilder;
 use font_kit::source::SystemSource;
@@ -314,8 +316,26 @@ fn get_runtime_info() -> RuntimeInfo {
     RuntimeInfo {
         platform: std::env::consts::OS.to_string(),
         locale: sys_locale::get_locale(),
-        app_version: env!("CARGO_PKG_VERSION").to_string(),
+        app_version: app_version_from_tauri_conf(),
     }
+}
+
+/// 版本号以 tauri.conf.json 为准，确保前端“关于”展示与打包配置一致。
+fn app_version_from_tauri_conf() -> String {
+    static VERSION: OnceLock<String> = OnceLock::new();
+    VERSION
+        .get_or_init(|| {
+            serde_json::from_str::<Value>(include_str!("../tauri.conf.json"))
+                .ok()
+                .and_then(|json| {
+                    json.get("package")
+                        .and_then(|pkg| pkg.get("version"))
+                        .and_then(Value::as_str)
+                        .map(str::to_string)
+                })
+                .unwrap_or_else(|| env!("CARGO_PKG_VERSION").to_string())
+        })
+        .clone()
 }
 
 #[tauri::command]

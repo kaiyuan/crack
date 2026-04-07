@@ -704,9 +704,6 @@ input[type="color"] {
 .about-logo {
   width: 44px;
   height: 44px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: #fff;
   object-fit: contain;
 }
 

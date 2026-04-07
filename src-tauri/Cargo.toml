@@ -1,6 +1,6 @@
 [package]
 name = "ezcut"
-version = "0.0.18"
+version = "0.0.21"
 description = "Lightweight batch image editor built with Tauri"
 authors = ["OpenAI Codex"]
 license = "MIT"

@@ -10,7 +10,7 @@ const tr={en:{appTitle:'EZCut',appSubtitle:'Batch image editor',previewEyebrow:'
 
 /* 运行期状态：增加对多图层（watermarks, overlays）的支持。 */
 const s={files:[],selectedId:null,outputDirectory:'',platform:'windows',locale:'en',isDragOverlayVisible:false,previewCache:{},previewToken:0,previewImage:null,previewCropRect:null,watermarks:[],overlays:[],interaction:null,fonts:[],appVersion:'0.0.18'};
-const e={windowShell:document.querySelector('.window-shell'),leftColumn:document.getElementById('left-column'),fileInput:document.getElementById('file-input'),imageList:document.getElementById('image-list'),imageCount:document.getElementById('image-count'),previewCanvas:document.getElementById('preview-canvas'),previewMeta:document.getElementById('preview-meta'),pickFilesButton:document.getElementById('pick-files-button'),watermarkList:document.getElementById('watermark-list'),overlayList:document.getElementById('overlay-list'),addWatermarkBtn:document.getElementById('add-watermark-button'),addOverlayBtn:document.getElementById('add-overlay-button'),pickOutputButton:document.getElementById('pick-output-button'),outputDirectory:document.getElementById('output-directory'),processButton:document.getElementById('process-button'),clearAfterExport:document.getElementById('clear-after-export'),statusBox:document.getElementById('status-box'),resultList:document.getElementById('result-list'),dropOverlay:document.getElementById('drop-overlay'),languagePicker:document.getElementById('language-picker'),aboutButton:document.getElementById('about-button'),aboutModal:document.getElementById('about-modal'),aboutTitle:document.getElementById('about-title'),aboutVersionText:document.getElementById('about-version-text'),aboutCopyright:document.getElementById('about-copyright'),aboutProjectLabel:document.getElementById('about-project-label'),aboutUpdateResult:document.getElementById('about-update-result'),checkUpdateButton:document.getElementById('check-update-button'),aboutSponsorLink:document.getElementById('about-sponsor-link'),aboutCloseButtons:document.querySelectorAll('#about-close, #about-close-footer'),regexModal:document.getElementById('regex-modal'),regexHelpButton:document.getElementById('regex-help-button'),closeModalButtons:document.querySelectorAll('#close-modal, #close-modal-btn'),regexHelpBody:document.getElementById('regex-help-body')};
+const e={windowShell:document.querySelector('.window-shell'),leftColumn:document.getElementById('left-column'),fileInput:document.getElementById('file-input'),imageList:document.getElementById('image-list'),imageCount:document.getElementById('image-count'),previewCanvas:document.getElementById('preview-canvas'),previewMeta:document.getElementById('preview-meta'),pickFilesButton:document.getElementById('pick-files-button'),watermarkList:document.getElementById('watermark-list'),overlayList:document.getElementById('overlay-list'),addWatermarkBtn:document.getElementById('add-watermark-button'),addOverlayBtn:document.getElementById('add-overlay-button'),pickOutputButton:document.getElementById('pick-output-button'),outputDirectory:document.getElementById('output-directory'),processButton:document.getElementById('process-button'),clearAfterExport:document.getElementById('clear-after-export'),statusBox:document.getElementById('status-box'),resultList:document.getElementById('result-list'),dropOverlay:document.getElementById('drop-overlay'),languagePicker:document.getElementById('language-picker'),aboutButton:document.getElementById('about-button'),aboutModal:document.getElementById('about-modal'),aboutTitle:document.getElementById('about-title'),aboutVersionText:document.getElementById('about-version-text'),aboutCopyright:document.getElementById('about-copyright'),aboutProjectLabel:document.getElementById('about-project-label'),checkUpdateButton:document.getElementById('check-update-button'),aboutSponsorLink:document.getElementById('about-sponsor-link'),aboutCloseButtons:document.querySelectorAll('#about-close, #about-close-footer'),regexModal:document.getElementById('regex-modal'),regexHelpButton:document.getElementById('regex-help-button'),closeModalButtons:document.querySelectorAll('#close-modal, #close-modal-btn'),regexHelpBody:document.getElementById('regex-help-body')};
 let timer=null,isRendering=false;
 const n=(v,min,max)=>Math.round(Math.min(max,Math.max(min,v)));
 const loc=(raw)=>{if(!raw)return'en';const v=raw.toLowerCase();if(v.startsWith('zh-cn')||v.startsWith('zh-sg'))return'zh-CN';if(v.startsWith('zh-tw')||v.startsWith('zh-hk')||v.startsWith('zh-mo'))return'zh-TW';if(v.startsWith('ja'))return'ja';if(v.startsWith('ko'))return'ko';if(v.startsWith('zh'))return'zh-CN';return'en';};
@@ -48,14 +48,14 @@ const renderAboutInfo=()=>{
     if(e.aboutVersionText)e.aboutVersionText.textContent=`${t.version}: ${s.appVersion}`;
     if(e.aboutCopyright)e.aboutCopyright.textContent=t.copyright;
     if(e.aboutProjectLabel)e.aboutProjectLabel.textContent=`${t.project}:`;
-    if(e.checkUpdateButton)e.checkUpdateButton.textContent=t.check;
+    if(e.checkUpdateButton){e.checkUpdateButton.textContent=t.check;e.checkUpdateButton.disabled=false;}
     if(e.aboutSponsorLink)e.aboutSponsorLink.textContent=t.sponsor;
-    if(e.aboutUpdateResult)e.aboutUpdateResult.textContent=t.idle;
 };
 const checkForUpdates=async()=>{
-    if(!e.aboutUpdateResult) return;
+    if(!e.checkUpdateButton) return;
     const t=aboutText(s.locale);
-    e.aboutUpdateResult.textContent=t.checking;
+    e.checkUpdateButton.disabled=true;
+    e.checkUpdateButton.textContent=t.checking;
     try{
         const res=await fetch('https://api.github.com/repos/Kaiyuan/ezcut/releases/latest');
         if(!res.ok) throw new Error('http '+res.status);
@@ -63,12 +63,14 @@ const checkForUpdates=async()=>{
         const latestTag=normVersion(latest?.tag_name||latest?.name||'');
         if(!latestTag) throw new Error('no version');
         if(cmpVersion(latestTag,s.appVersion)>0){
-            e.aboutUpdateResult.textContent=t.available.replace('{version}',latestTag);
+            e.checkUpdateButton.textContent=t.available.replace('{version}',latestTag);
         }else{
-            e.aboutUpdateResult.textContent=t.latest;
+            e.checkUpdateButton.textContent=t.latest;
         }
     }catch(_){
-        e.aboutUpdateResult.textContent=t.failed;
+        e.checkUpdateButton.textContent=t.failed;
+    }finally{
+        e.checkUpdateButton.disabled=false;
     }
 };
 const hydrateAppVersion=async()=>{
