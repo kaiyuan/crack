@@ -139,6 +139,7 @@ struct ProcessSummary {
 struct RuntimeInfo {
     platform: String,
     locale: Option<String>,
+    app_version: String,
 }
 
 #[derive(Serialize)]
@@ -313,6 +314,7 @@ fn get_runtime_info() -> RuntimeInfo {
     RuntimeInfo {
         platform: std::env::consts::OS.to_string(),
         locale: sys_locale::get_locale(),
+        app_version: env!("CARGO_PKG_VERSION").to_string(),
     }
 }
 

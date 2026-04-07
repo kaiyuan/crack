@@ -31,6 +31,9 @@
           <option value="ja">日本語</option>
           <option value="ko">한국어</option>
         </select>
+        <button id="about-button" class="icon-button" type="button" aria-label="About" title="About">
+          <span aria-hidden="true">i</span>
+        </button>
         <input id="file-input" type="file" accept=".png,.jpg,.jpeg,.webp,.tiff,.bmp,.gif" multiple hidden />
       </div>
     </header>
@@ -266,6 +269,40 @@
         </div>
         <div class="modal-footer">
           <button id="close-modal-btn" class="secondary-button" data-i18n="close">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="about-modal" class="modal">
+      <div class="modal-backdrop"></div>
+      <div class="modal-container about-modal-container">
+        <div class="modal-header">
+          <h3 id="about-title">About EZCut</h3>
+          <button id="about-close" class="close-button">&times;</button>
+        </div>
+        <div class="modal-content">
+          <div class="about-brand">
+            <img id="about-logo" class="about-logo" src="icon.png" alt="EZCut Logo" />
+            <div class="about-brand-text">
+              <strong>EZCut</strong>
+              <span id="about-version-text">Version: 0.0.0</span>
+            </div>
+          </div>
+          <p id="about-copyright">Copyright © 2026 Kaiyuan. All rights reserved.</p>
+          <p>
+            <span id="about-project-label">Project:</span>
+            <a id="about-project-link" href="https://github.com/Kaiyuan/ezcut" target="_blank" rel="noreferrer">
+              https://github.com/Kaiyuan/ezcut
+            </a>
+          </p>
+          <p id="about-update-result" class="info-box">Update status: idle</p>
+          <div class="inline-row">
+            <button id="check-update-button" class="secondary-button" type="button">Check Updates</button>
+            <a id="about-sponsor-link" class="secondary-button" href="https://kaiyuan.github.io/sponsor-page/drinks/" target="_blank" rel="noreferrer">Sponsor</a>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="about-close-footer" class="secondary-button" type="button">Close</button>
         </div>
       </div>
     </div>

@@ -218,6 +218,37 @@
   const languagePicker = document.getElementById("language-picker");
   const primaryDownload = document.getElementById("primary-download");
   const downloadCards = Array.from(document.querySelectorAll(".download-card"));
+  const sponsorEyebrow = document.getElementById("sponsor-eyebrow");
+  const sponsorTitle = document.getElementById("sponsor-title");
+  const sponsorBody = document.getElementById("sponsor-body");
+
+  const sponsorTranslations = {
+    en: {
+      eyebrow: "Support",
+      title: "Sponsor EZCut",
+      body: "If EZCut helps your daily workflow, you can support ongoing development here."
+    },
+    "zh-CN": {
+      eyebrow: "赞助",
+      title: "支持 EZCut",
+      body: "如果 EZCut 对你的日常工作有帮助，欢迎在这里赞助支持项目持续开发。"
+    },
+    "zh-TW": {
+      eyebrow: "贊助",
+      title: "支持 EZCut",
+      body: "如果 EZCut 對你的日常工作有幫助，歡迎在這裡贊助支持專案持續開發。"
+    },
+    ja: {
+      eyebrow: "サポート",
+      title: "EZCut を支援",
+      body: "EZCut が日々の作業に役立っている場合は、こちらから開発を支援できます。"
+    },
+    ko: {
+      eyebrow: "후원",
+      title: "EZCut 후원",
+      body: "EZCut이 일상적인 작업에 도움이 된다면 이곳에서 개발을 후원해 주세요."
+    }
+  };
 
   function detectLocale() {
     const raw = (navigator.language || "en").toLowerCase();
@@ -256,6 +287,10 @@
       const key = node.dataset.i18n;
       node.textContent = dict[key] || translations.en[key] || key;
     });
+    const sponsorDict = sponsorTranslations[locale] || sponsorTranslations.en;
+    if (sponsorEyebrow) sponsorEyebrow.textContent = sponsorDict.eyebrow;
+    if (sponsorTitle) sponsorTitle.textContent = sponsorDict.title;
+    if (sponsorBody) sponsorBody.textContent = sponsorDict.body;
   }
 
   function applyPlatform(platform) {
