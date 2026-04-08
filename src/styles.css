@@ -301,6 +301,7 @@ select {
   display: grid;
   gap: 8px;
   overflow-y: auto;
+  overflow-x: hidden;
   align-content: start;
   min-height: 0;
   padding-right: 4px;

@@ -9,7 +9,7 @@
   },
   "package": {
     "productName": "EZCut",
-    "version": "0.0.21"
+    "version": "0.0.22"
   },
   "tauri": {
     "allowlist": {
@@ -24,6 +24,7 @@
         "all": true
       },
       "shell": {
+        "all": true,
         "open": true
       }
     },
@@ -48,7 +49,8 @@
         "height": 750,
         "minWidth": 640,
         "minHeight": 430,
-        "resizable": true
+        "resizable": true,
+        "visible": true
       }
     ]
   }

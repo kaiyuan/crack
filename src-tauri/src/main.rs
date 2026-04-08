@@ -1,4 +1,4 @@
-﻿#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 use base64::Engine;
@@ -127,7 +127,6 @@ struct ProcessErrorItem {
     file_path: String,
     message: String,
 }
-
 #[derive(Serialize)]
 #[serde(rename_all = "snake_case")]
 struct ProcessSummary {
@@ -142,6 +141,11 @@ struct RuntimeInfo {
     platform: String,
     locale: Option<String>,
     app_version: String,
+}
+
+#[tauri::command]
+fn show_main_window(window: tauri::Window) {
+    window.show().unwrap();
 }
 
 #[derive(Serialize)]
@@ -855,16 +859,16 @@ fn process_images(payload: ProcessPayload) -> Result<ProcessSummary, String> {
 fn main() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
-            get_runtime_info,
-            get_preview_data,
+            get_system_fonts,
             pick_files,
             load_files_from_paths,
             pick_overlay,
             pick_output_directory,
+            get_runtime_info,
+            get_preview_data,
             process_images,
-            get_system_fonts
+            show_main_window,
         ])
         .run(tauri::generate_context!())
         .expect("error while running EZCut");
 }
-
