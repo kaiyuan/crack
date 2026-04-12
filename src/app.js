@@ -374,7 +374,7 @@ const renderFiles=()=>{
     const frag=document.createDocumentFragment();
     s.files.forEach((file)=>{
         const item=document.createElement('article');item.className=`image-item${file.id===s.selectedId?' selected':''}`;item.dataset.id=file.id;
-        item.innerHTML=`<div class="image-item-head"><span class="image-name" title="${file.name}">${file.name}</span><button class="remove-button" type="button" data-id="${file.id}">${tt('remove')}</button></div><div class="image-item-meta"><span>${file.width} x ${file.height}</span><span>${bytes(file.size_bytes)}</span></div><div class="image-path" title="${file.path}">${file.path}</div>`;
+        item.innerHTML = `<div class="image-item-head"><span class="image-name" title="${file.name}">${file.name}</span></div><div class="image-item-meta"><span>${file.width} x ${file.height}</span><span>${bytes(file.size_bytes)}</span><button class="remove-button" type="button" data-id="${file.id}">${tt('remove')}</button></div><div class="image-path" title="${file.path}">${file.path}</div>`;
         frag.appendChild(item);
     });e.imageList.appendChild(frag);schedule(10);
 };
