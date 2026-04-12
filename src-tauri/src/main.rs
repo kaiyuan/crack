@@ -28,7 +28,8 @@ fn get_system_fonts() -> Vec<String> {
     names
 }
 
-// 鍓嶇鐢ㄤ簬灞曠ず涓庡鍑虹殑鏂囦欢鍏冧俊鎭€?
+// ImageFile: 对应前端显示和处理的单一图片对象。
+// 包含了图片的唯一标识、详细路径以及基本的尺寸元数据。
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 struct ImageFile {
@@ -144,6 +145,7 @@ struct RuntimeInfo {
 }
 
 #[tauri::command]
+/// 手动显示主窗口。通常在前端完成基础资源（如字体）加载后调用，以避免白屏。
 fn show_main_window(window: tauri::Window) {
     window.show().unwrap();
 }
@@ -154,7 +156,8 @@ struct PreviewData {
     data_url: String,
 }
 
-// 缁熶竴闄愬畾褰撳墠鐗堟湰鍙鐞嗙殑鍥剧墖鏍煎紡銆?
+// 统一限定当前版本可处理的图片格式。
+// 这里的判断影响了预览、载入以及最终导出的校验逻辑。
 fn is_supported_format(format: ImageFormat) -> bool {
     matches!(
         format,
@@ -194,6 +197,8 @@ fn mime_for_format(format: ImageFormat) -> &'static str {
     }
 }
 
+/// 探测图片的格式和尺寸。
+/// 返回 `(格式, (宽, 高))`，如果格式不支持则返回错误。
 fn probe_image(path: &Path) -> Result<(ImageFormat, (u32, u32)), String> {
     let reader = image::ImageReader::open(path).map_err(|error| error.to_string())?;
     let guessed = reader
@@ -211,6 +216,8 @@ fn probe_image(path: &Path) -> Result<(ImageFormat, (u32, u32)), String> {
     Ok((format, dimensions))
 }
 
+/// 获取文件的修改时间戳。
+/// 用于生成唯一的 ID 标识，确保即便路径相同，文件内容变更也能被识别。
 fn stable_modified_token(metadata: &fs::Metadata) -> u128 {
     metadata
         .modified()
@@ -220,6 +227,8 @@ fn stable_modified_token(metadata: &fs::Metadata) -> u128 {
         .unwrap_or_default()
 }
 
+/// 将一个文件路径映射为标准化的 ImageFile 对象。
+/// 包含格式探测、尺寸获取以及 ID 的计算。
 fn normalize_file(path: &Path) -> Result<ImageFile, String> {
     let metadata = fs::metadata(path).map_err(|error| error.to_string())?;
     if !metadata.is_file() {
@@ -248,6 +257,8 @@ fn normalize_file(path: &Path) -> Result<ImageFile, String> {
 }
 
 #[tauri::command]
+/// 弹出文件选择对话框，让用户选择图片文件。
+/// 支持多种常见格式，并将选中的路径转换为标准化对象返回给前端。
 fn pick_files() -> Result<Vec<ImageFile>, String> {
     let picked = FileDialogBuilder::new()
         .add_filter("Images", &["png", "jpg", "jpeg", "webp", "bmp", "gif", "tiff", "tga", "avif"])
@@ -265,6 +276,7 @@ fn pick_files() -> Result<Vec<ImageFile>, String> {
 }
 
 #[tauri::command]
+/// 接收外部（如拖拽）传入的路径列表，并将其解析为图片对象。
 fn load_files_from_paths(paths: Vec<String>) -> Result<Vec<ImageFile>, String> {
     let mut files = Vec::new();
     for path in paths {
@@ -343,6 +355,8 @@ fn app_version_from_tauri_conf() -> String {
 }
 
 #[tauri::command]
+/// 获取单张图片的预览数据（Base64 格式）。
+/// 前端可以通过返回的 data_url 直接在 <img> 标签中渲染预览图。
 fn get_preview_data(path: String) -> Result<PreviewData, String> {
     let bytes = fs::read(&path).map_err(|error| error.to_string())?;
     let format = image::guess_format(&bytes).map_err(|error| error.to_string())?;
@@ -369,15 +383,15 @@ fn process_single_frame_with_preloaded(
 ) -> Result<DynamicImage, String> {
     let mut image = image;
 
-    // 1. 瑁佸壀銆?
+    // 1. 裁剪阶段。根据用户配置的 (x, y) 和宽高进行无损或固定尺寸裁剪。
     image = crop_image(image, &payload.crop);
 
-    // 2. 缂╂斁銆?
+    // 2. 缩放阶段。支持等比缩放或强制拉伸。
     if payload.resize.enabled {
         image = resize_image(image, &payload.resize);
     }
 
-    // 3. 鍙犲姞鎵€鏈夊浘灞傦紙浣跨敤棰勫姞杞藉浘鐗囷紝鏃犻渶閲嶅璇荤鐩橈級銆?
+    // 3. 叠加层处理。遍历所有叠加图层，按顺序进行 alpha 混合叠加。
     for (i, overlay) in payload.overlays.iter().enumerate() {
         if let Some(pre) = preloaded_overlays.get(i).and_then(|o| o.as_ref()) {
             apply_overlay_with_image(&mut image, overlay, pre)?;
@@ -386,7 +400,7 @@ fn process_single_frame_with_preloaded(
         }
     }
 
-    // 4. 搴旂敤鐙珛姘村嵃灞傘€?
+    // 4. 水印处理。将用户自定义的各路水印图层合并进入最终图像。
     apply_watermark_with_images(&mut image, &payload.watermarks, preloaded_watermarks)?;
 
     Ok(image)
@@ -426,10 +440,11 @@ fn resize_image(image: DynamicImage, options: &ResizeOptions) -> DynamicImage {
     match options.mode.as_str() {
         "stretch" => image.resize_exact(target_width, target_height, FilterType::Lanczos3),
         "fill" => image.resize_to_fill(target_width, target_height, FilterType::Lanczos3),
-        _ => image.resize(target_width, target_height, FilterType::Lanczos3),
     }
 }
 
+/// 计算叠加层或水印的九宫格定位坐标。
+/// 返回 `(left, top)` 绝对坐标。
 fn overlay_position(
     base_width: u32,
     base_height: u32,
@@ -509,6 +524,7 @@ fn apply_overlay_with_image(
     Ok(())
 }
 
+/// 批量应用水印。使用预加载的 RgbaImage 图像数据以提升并发性能。
 fn apply_watermark_with_images(base: &mut DynamicImage, watermarks: &[WatermarkItem], preloaded_watermarks: &[RgbaImage]) -> Result<(), String> {
     let base_width = base.width();
     let base_height = base.height();
@@ -553,6 +569,8 @@ fn apply_watermark_with_images(base: &mut DynamicImage, watermarks: &[WatermarkI
 }
 
 /// 接收预编译 regex 与批处理时间戳，减少并行处理中重复构建开销。
+/// 根据模板和正则规则生成输出文件名。
+/// 支持 {name}, {index}, {width}, {height}, {timestamp} 等动态占位符。
 fn output_name_with_regex(
     file: &ImageFile,
     index: usize,
@@ -618,6 +636,8 @@ fn output_name_with_regex(
     })
 }
 
+/// 将处理后的图像编码并保存到磁盘。
+/// 针对不同文件格式（JPG, WebP, PNG 等）使用特定的优化编码参数。
 fn save_image(image: &DynamicImage, format_name: &str, path: &Path) -> Result<(), String> {
     use image::codecs::jpeg::JpegEncoder;
     use image::codecs::png::{CompressionType, FilterType as PngFilterType, PngEncoder};
@@ -662,6 +682,8 @@ fn save_image(image: &DynamicImage, format_name: &str, path: &Path) -> Result<()
 }
 
 /// 尽量减少重复的 create_dir_all 调用，降低大量文件导出时的系统调用开销。
+/// 确保输出目录存在。
+/// 使用了缓存机制避免在大量文件导出时重复进行昂贵的系统 create_dir_all 调用。
 fn ensure_output_directory(
     output_directory: &Path,
     created_dirs: &Mutex<HashSet<PathBuf>>,
@@ -678,6 +700,9 @@ fn ensure_output_directory(
 }
 
 /// 为并行导出预留唯一文件名，避免同批任务写入时发生重名竞争。
+/// 为并行导出预留唯一的文件输出路径。
+/// 如果文件名冲突（如导出到同一文件夹且模板生成同名），则递归增加序号直到路径唯一。
+/// 这里的操作包含锁竞争，但通过细粒度 Set 最小化了等待。
 fn reserve_unique_output_path(
     output_directory: &Path,
     file_name: &str,
@@ -721,6 +746,9 @@ fn reserve_unique_output_path(
 }
 
 #[tauri::command]
+/// 批处理任务的入口点。
+/// 使用 Rayon 进行并行导出，最大限度利用多核性能。
+/// 过程包含：资源预加载、并行渲染、碰撞检测（重名处理）以及结果统计。
 fn process_images(payload: ProcessPayload) -> Result<ProcessSummary, String> {
     let summary_directory = payload.output_directory.clone().unwrap_or_else(default_output_directory);
     if summary_directory != "source" { fs::create_dir_all(&summary_directory).map_err(|e| e.to_string())?; }
@@ -736,14 +764,15 @@ fn process_images(payload: ProcessPayload) -> Result<ProcessSummary, String> {
             .build().map_err(|e| e.to_string())?)
     } else { None };
 
-    // 2. 棰勫姞杞借祫婧愩€?
-    // 2.1 棰勫姞杞?Overlay
+    // 2. 资源预加载：在进入并行循环前，先将所有 Overlay 和 Watermark 载入内存并解码。
+    // 这避免了每个线程都重复去读写磁盘和解析 Base64 带来的性能浪费。
+    // 2.1 预加载 Overlay
     let preloaded_overlays: Vec<Option<RgbaImage>> = payload.overlays.iter().map(|o| {
         if !o.enabled { return None; }
         o.path.as_ref().and_then(|p| image::open(p).ok()).map(|img| img.to_rgba8())
     }).collect();
 
-    // 2.2 棰勫鐞?Watermarks (Base64 瑙ｇ爜)
+    // 2.2 预加载 Watermarks（Base64 解码）
     let mut preloaded_watermarks = Vec::with_capacity(payload.watermarks.len());
     for wm in &payload.watermarks {
         let decoded = BASE64_STANDARD.decode(&wm.base64).map_err(|e| e.to_string())?;
@@ -781,6 +810,7 @@ fn process_images(payload: ProcessPayload) -> Result<ProcessSummary, String> {
             let output_format_str = if payload.naming.output_format.eq_ignore_ascii_case("original") { file.extension.as_str() } else { payload.naming.output_format.as_str() };
 
             if format == ImageFormat::Gif && output_format_str == "gif" {
+                // 特殊处理 GIF：为了支持动图缩放/水印，需要逐帧解码后再重新编码。
                 use image::AnimationDecoder;
                 let gif_file = fs::File::open(&file.path).map_err(|e| format!("Read error: {}", e))?;
                 let decoder = image::codecs::gif::GifDecoder::new(std::io::BufReader::new(gif_file))
@@ -790,6 +820,7 @@ fn process_images(payload: ProcessPayload) -> Result<ProcessSummary, String> {
                 if let Some(first_frame) = first {
                     let second = frames.next().transpose().map_err(|e| e.to_string())?;
                     if let Some(second_frame) = second {
+                        // 发现多帧，按动图流程处理。
                         let out_file = fs::File::create(&output_path).map_err(|e| e.to_string())?;
                         let mut encoder = image::codecs::gif::GifEncoder::new(out_file);
                         let mut last_size = None;
@@ -801,6 +832,7 @@ fn process_images(payload: ProcessPayload) -> Result<ProcessSummary, String> {
                             let frame = frame.map_err(|e| e.to_string())?;
                             let delay = frame.delay();
                             let buffer = frame.into_buffer();
+                            // 对每一帧应用图像处理（缩放、水印等）。
                             let processed = process_single_frame_with_preloaded(DynamicImage::ImageRgba8(buffer), &payload, &preloaded_overlays, &preloaded_watermarks)?;
                             last_size = Some((processed.width(), processed.height()));
                             let new_frame = image::Frame::from_parts(processed.to_rgba8(), 0, 0, delay);
@@ -810,7 +842,7 @@ fn process_images(payload: ProcessPayload) -> Result<ProcessSummary, String> {
                         return Ok(ProcessResultItem { output_path: output_path.to_string_lossy().to_string(), width: out_w, height: out_h });
                     }
 
-                    // 单帧 GIF：直接复用已解码首帧，避免再次打开文件。
+                    // 只有一帧，按普通静图逻辑但保留 GIF 编码输出。
                     let delay = first_frame.delay();
                     let buffer = first_frame.into_buffer();
                     let processed = process_single_frame_with_preloaded(
@@ -829,7 +861,6 @@ fn process_images(payload: ProcessPayload) -> Result<ProcessSummary, String> {
                         height: processed.height(),
                     });
                 }
-
                 return Err("GIF has no frames".to_string());
             }
 
@@ -857,6 +888,7 @@ fn process_images(payload: ProcessPayload) -> Result<ProcessSummary, String> {
 }
 
 fn main() {
+    // 启动 Tauri 构建器并注册所有后端指令 Handler。
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             get_system_fonts,
