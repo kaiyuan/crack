@@ -3,7 +3,7 @@
 
 `EZCut` is a lightweight desktop image editing tool for Windows 10+ (64-bit) and macOS 10.15+ .
 
-![EZCut Screenshot](https://kaiyuan.github.io/ezcut/assets/EZCut-ui.png)
+![EZCut Screenshot](https://kaiyuan.github.io/ezcut/assets/EZCut-ui.avif)
 
 Repository:
 
