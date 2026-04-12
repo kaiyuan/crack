@@ -440,6 +440,7 @@ fn resize_image(image: DynamicImage, options: &ResizeOptions) -> DynamicImage {
     match options.mode.as_str() {
         "stretch" => image.resize_exact(target_width, target_height, FilterType::Lanczos3),
         "fill" => image.resize_to_fill(target_width, target_height, FilterType::Lanczos3),
+        _ => image.resize(target_width, target_height, FilterType::Lanczos3),
     }
 }
 
